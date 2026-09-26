@@ -28,9 +28,9 @@ logger = logging.getLogger(__name__)
 _DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 _GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
 
-# Maximum tokens the LLM may generate per call. 1024 is sufficient for the
-# structured JSON responses the RAG agent expects — larger values waste quota.
-_MAX_TOKENS = 1024
+# Maximum tokens the LLM may generate per call. Reasoning models spend part
+# of this budget before the JSON answer, so 1024 was cutting responses off.
+_MAX_TOKENS = 4096
 
 
 # ---------------------------------------------------------------------------

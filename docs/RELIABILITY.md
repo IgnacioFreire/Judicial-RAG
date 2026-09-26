@@ -22,7 +22,7 @@ Phase 1 runs per PDF, capped by `MAX_PARALLEL_PDFS` (default 4, minimum 1, maxim
 
 ## Model budget
 
-Retrieval asks for 5 chunks per question. Generation uses `max_tokens=1024` in `services/llm_client.py`. There is no wall-clock budget and no cost budget per run.
+Retrieval asks for 5 chunks per question. Generation uses `max_tokens=4096` in `services/llm_client.py`. There is no wall-clock budget and no cost budget per run.
 
 ## Absent metrics
 

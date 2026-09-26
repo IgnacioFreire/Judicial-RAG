@@ -15,6 +15,7 @@ Each QuestionType maps to a dedicated prompt strategy:
 
 import json
 import logging
+import re
 
 from models.query import (
     AgentAnswer,
@@ -356,12 +357,11 @@ def _parse_response(
         Structured AgentAnswer with confidence, citation and provenance.
     """
     try:
-        data = json.loads(raw.strip())
+        data = _load_json_object(raw)
     except json.JSONDecodeError:
         logger.warning(
-            "Non-JSON LLM response for %r — defaulting to NOT_FOUND. Preview: %r",
+            "Non-JSON LLM response for %r — defaulting to NOT_FOUND",
             question.label,
-            raw[:200],
         )
         return AgentAnswer(
             question=question,
@@ -410,6 +410,43 @@ def _build_citation(
         # Clamp to [0, 1] in case of floating point edge cases
         score=max(0.0, min(1.0, 1.0 - best["distance"])),
     )
+
+
+def _load_json_object(raw: str) -> dict:
+    """Parse a JSON object from a model response.
+
+    Accepts a raw object, an object wrapped in a markdown fence, and an
+    object surrounded by other text. Anything that does not contain one
+    JSON object raises JSONDecodeError.
+
+    Args:
+        raw: Model response text.
+
+    Returns:
+        The decoded JSON object.
+    """
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
+    fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, flags=re.DOTALL)
+    if fenced:
+        text = fenced.group(1)
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end > start:
+        text = text[start : end + 1]
+
+    data = json.loads(text)
+    if not isinstance(data, dict):
+        raise json.JSONDecodeError("Expected a JSON object", text, 0)
+    return data
 
 
 def _parse_confidence(value: str) -> AnswerConfidence:
