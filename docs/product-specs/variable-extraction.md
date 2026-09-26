@@ -58,7 +58,13 @@ The system SHALL keep processing the rest of a batch when one PDF fails to index
 #### Scenario: One bad PDF
 - **WHEN** one PDF fails during extraction or embedding and another PDF succeeds
 - **THEN** the interface warns that the failed file was not processed
+- **AND** the warning is still visible after the run finishes
 - **AND** the successful PDF still receives an answer row per saved question
+
+#### Scenario: PDF with no text
+- **WHEN** extraction finishes but produces no text chunks
+- **THEN** the interface warns that the file was not processed
+- **AND** that PDF does not appear as an answered document
 
 ### Requirement: Current upload set
 The system MUST answer only PDFs indexed successfully in the current run. A PDF indexed earlier and absent from this run's upload set MUST NOT be answered.

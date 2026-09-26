@@ -73,6 +73,9 @@ def main() -> None:
 
     _render_run_section(pdf_paths)
 
+    for message in state.run_errors():
+        st.warning(message)
+
     if state.results():
         results_viewer.render(state.results())
 
@@ -121,9 +124,11 @@ def _run_pipeline(pdf_paths: list[Path], schema: QuestionSchema) -> None:
     """
     state.set_processing(True)
     state.set_results(None)
+    state.set_run_errors([])
 
     bar = st.progress(0.0, text="Starting...")
     status = st.empty()
+    errors: list[str] = []
 
     def on_progress(event: ProgressEvent) -> None:
         # Update bar when we know the total, otherwise update status text
@@ -136,7 +141,7 @@ def _run_pipeline(pdf_paths: list[Path], schema: QuestionSchema) -> None:
             status.info(event.message)
 
         if event.stage == Stage.ERROR:
-            st.warning(f"⚠️ {event.message}")
+            errors.append(event.message)
 
     try:
         results = asyncio.run(
@@ -158,6 +163,7 @@ def _run_pipeline(pdf_paths: list[Path], schema: QuestionSchema) -> None:
         st.error(f"Pipeline failed: {e}")
 
     finally:
+        state.set_run_errors(errors)
         state.set_processing(False)
         st.rerun()
 

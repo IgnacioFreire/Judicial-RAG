@@ -180,7 +180,7 @@ async def _index_all(
 
     Returns:
         Filenames that were indexed and can be answered. A PDF that
-        produced no chunks is omitted, matching an empty search index.
+        produced no chunks is a failure and is omitted.
     """
     total = len(pdf_paths)
     tasks = [
@@ -239,6 +239,8 @@ async def _index_one(
 
         document = await extract(pdf_path, is_scanned=is_scanned)
         logger.debug("Extracted %s: %d chunks", source, document.metadata.total_chunks)
+        if document.metadata.total_chunks == 0:
+            raise RuntimeError("produced no text")
 
         _emit(
             on_progress,
@@ -253,8 +255,6 @@ async def _index_one(
 
         await embed_document(document, session_id)
         logger.debug("Indexed %s (%d/%d)", source, current, total)
-        if document.metadata.total_chunks == 0:
-            return None
         return source
 
     except Exception as e:

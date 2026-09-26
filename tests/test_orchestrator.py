@@ -112,3 +112,54 @@ async def test_second_run_answers_only_the_files_still_uploaded(
     stored = get_collection(session_id).get(include=["metadatas"])
     sources = {meta["source"] for meta in stored["metadatas"]}
     assert sources == {"a.pdf"}
+
+
+@pytest.mark.asyncio
+async def test_pdf_with_no_text_is_a_visible_failure(
+    tmp_path: Path,
+    mock_inference,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    docs = {
+        "empty.pdf": _document("empty.pdf", chunks=0),
+        "ok.pdf": _document("ok.pdf"),
+    }
+
+    async def fake_extract(pdf_path: Path, is_scanned: bool = False) -> DocumentResult:
+        return docs[pdf_path.name]
+
+    fake_extractor = ModuleType("pipeline.extractor")
+    fake_extractor.extract = fake_extract
+    monkeypatch.setitem(sys.modules, "pipeline.extractor", fake_extractor)
+
+    def fake_answer(
+        question: UserQuestion, session_id: str, source: str
+    ) -> AgentAnswer:
+        return AgentAnswer(
+            question=question,
+            document=source,
+            answer="synthetic",
+            confidence=AnswerConfidence.HIGH,
+        )
+
+    monkeypatch.setattr("pipeline.orchestrator.answer_question", fake_answer)
+
+    from pipeline.orchestrator import Stage, run
+
+    events = []
+    empty = tmp_path / "empty.pdf"
+    ok = tmp_path / "ok.pdf"
+    empty.write_bytes(b"%PDF")
+    ok.write_bytes(b"%PDF")
+
+    results = await run(
+        [empty, ok],
+        _schema(),
+        "session-empty-pdf",
+        on_progress=events.append,
+    )
+    assert [item.document for item in results] == ["ok.pdf"]
+    failures = [event for event in events if event.stage == Stage.ERROR]
+    assert len(failures) == 1
+    assert failures[0].source == "empty.pdf"
+    assert "no text" in failures[0].message

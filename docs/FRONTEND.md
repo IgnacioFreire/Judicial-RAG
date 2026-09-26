@@ -21,6 +21,7 @@ In `app/session_state.py`:
 | `results` | `list[DocumentAnswers] \| None` | `None` |
 | `is_processing` | `bool` | `False` |
 | `uploaded_files` | `list` | `[]` |
+| `run_errors` | `list[str]` | `[]`. Failure messages from the latest run. Shown again after the rerun that ends the run. Cleared on Reset and at the start of the next run |
 
 Components use the accessors (`state.schema()`, `state.set_results()`, …). Do not add raw keys in `main.py` or in the viewer.
 
