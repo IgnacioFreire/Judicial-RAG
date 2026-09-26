@@ -147,6 +147,7 @@ def _build_prompt(question: UserQuestion, chunks: list[dict]) -> str:
                 question.question,
                 "",
                 _format_notes(question),
+                _format_output_format(question),
                 _format_categories(question),
                 _build_output_spec(),
             ],
@@ -257,6 +258,20 @@ def _format_notes(question: UserQuestion) -> str:
     if not question.notes:
         return ""
     return f"## Additional rules\n\n{question.notes}\n"
+
+
+def _format_output_format(question: UserQuestion) -> str:
+    """Format the optional output-format hint for this question only.
+
+    Args:
+        question: User question with an optional output format.
+
+    Returns:
+        Formatted hint block, or an empty string when no hint is set.
+    """
+    if not question.output_format or not question.output_format.strip():
+        return ""
+    return f"## Expected output format\n\n{question.output_format.strip()}\n"
 
 
 def _format_categories(question: UserQuestion) -> str:
