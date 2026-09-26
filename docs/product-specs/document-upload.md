@@ -1,0 +1,38 @@
+# Document upload
+
+## Purpose
+
+Accept the PDFs a person wants read in this session, and refuse files the pipeline should not open.
+
+## Requirements
+
+### Requirement: PDF upload
+The system SHALL accept one or more PDF files for the current session and SHALL make each accepted file available to a later run.
+
+#### Scenario: One or more PDFs
+- **WHEN** the user uploads one or more PDF files within the size limit
+- **THEN** each file is kept for the current session
+- **AND** the interface reports how many files are ready
+
+### Requirement: Size limit
+The system MUST reject a PDF larger than 20 MB and MUST still accept the other files in the same upload.
+
+#### Scenario: Mixed sizes
+- **WHEN** the user uploads one PDF over 20 MB and one PDF at or under 20 MB
+- **THEN** the oversized file is rejected with its name and size
+- **AND** the smaller PDF stays available to run
+
+### Requirement: Empty upload
+The system SHALL NOT offer a pipeline run when no PDF has been accepted.
+
+#### Scenario: Nothing uploaded
+- **WHEN** the user has not uploaded an accepted PDF
+- **THEN** the run control stays disabled
+- **AND** the interface tells the user to upload at least one PDF
+
+### Requirement: Digital extraction only
+The system SHALL extract every uploaded PDF as a digital document. It MUST NOT ask the user whether the PDF is scanned.
+
+#### Scenario: Any accepted PDF
+- **WHEN** the user runs the pipeline on an accepted PDF
+- **THEN** extraction runs without OCR
