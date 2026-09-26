@@ -12,15 +12,13 @@ Scale used on 2026-09-26. Update it when a change moves a grade.
 | Module | Grade | Why |
 |---|---|---|
 | `models/document.py`, `models/query.py` | A | Validation covered in `tests/test_document.py` and `tests/test_query.py`. The schema-persistence docstring is still wrong (TD-07) |
-| `pipeline/embedder.py` | B | Tests with a mocked client (prefixes, isolation, upsert). The model name is still TD-01 |
+| `pipeline/embedder.py` | B | Tests with a mocked client (prefixes, isolation, upsert, replacement) |
 | `pipeline/vector_store.py` | C | Clear read path, filtered by `source`. No tests of its own |
-| `pipeline/extractor.py` | C | Real conversion and chunking. `tests/test_extractor.py` is empty. TD-02 |
+| `pipeline/extractor.py` | C | Real conversion and chunking. `tests/test_extractor.py` is empty |
 | `pipeline/rag_agent.py` | B | Four instructions, fenced-JSON recovery, and a `NOT_FOUND` fallback. Tests cover the format hint and parsing. Citation page is still the top chunk (TD-08) |
-| `pipeline/orchestrator.py` | B | Two phases, per-PDF and per-question failures contained. No tests |
+| `pipeline/orchestrator.py` | B | Two phases, per-PDF and per-question failures contained. Tests cover which files a run answers |
 | `services/llm_client.py` | B | Four providers behind `call_llm`. No tests |
 | `config/settings.py` | B | Validates the active provider and its key. Chunk size is not a setting |
-| `config/prompts.py` | D | Docstring only. Prompts live in `rag_agent.py` (TD-03) |
-| `services/ocr_service.py`, `services/parallel_runner.py` | D | Docstring only (TD-03) |
 | `storage/` | B | Session and deletion are implemented. Timeout is measured from `created_at` (TD-10). No tests |
 | `app/` | C | The full path is usable. No UI tests. OCR forced off (TD-04) |
 | `docs/` | C | Written against the code on this date. No automatic freshness check (TD-14) |

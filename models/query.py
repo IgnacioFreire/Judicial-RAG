@@ -26,20 +26,16 @@ from pydantic import BaseModel, Field, model_validator
 class QuestionType(str, Enum):
     """Strategy the agent uses to answer a question.
 
-    Each type maps to a dedicated skill in pipeline/skills/:
+    Each type maps to an instruction in pipeline/rag_agent.py:
 
     Attributes:
         EXTRACTION: copy a value directly from the text (e.g. ID, date, name).
-            Skill: skills/extraction.py
         CALCULATION: derive a value by operating on extracted data
             (e.g. months between two dates).
-            Skill: skills/calculation.py
         CLASSIFICATION: assign content to a category from a closed list
             (e.g. sex of victim: 1=Woman, 2=Man).
-            Skill: skills/classification.py
         EXPLANATION: explain why or how something happened, requiring
             reasoning over the text rather than direct extraction.
-            Skill: skills/explanation.py
     """
 
     EXTRACTION = "extraction"
@@ -106,7 +102,7 @@ class UserQuestion(BaseModel):
         label: Short display name shown in the UI (e.g. "Sentencing date").
         question: Full instruction sent to the agent, including extraction
             rules and format requirements.
-        question_type: Determines which skill is invoked in the pipeline.
+        question_type: Determines which instruction the agent uses.
         categories: Required when question_type is CLASSIFICATION. Must
             contain at least two options.
         output_format: Expected output format hint (e.g. "DD/MM/YYYY",

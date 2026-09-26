@@ -33,7 +33,7 @@ app/                      Streamlit
 | Package | Responsibility | Does not |
 |---|---|---|
 | `models/` | Pydantic contracts for documents and for questions and answers | I/O, network, Streamlit |
-| `config/` | Settings from the environment (`settings.py`). `prompts.py` is empty | Call the LLM or read PDFs |
+| `config/` | Settings from the environment (`settings.py`) | Call the LLM or read PDFs |
 | `services/` | `llm_client.py` routes Anthropic, OpenAI, DeepSeek, and Gemini | Choose chunks or the question type |
 | `pipeline/` | Extract, index, search, and answer | Render UI or own the temp directory |
 | `storage/` | Per-session temp directory and expiry | Interpret PDF content |

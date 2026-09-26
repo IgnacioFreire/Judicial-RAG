@@ -42,17 +42,14 @@ judicial-rag/
 │   └── query.py
 │
 ├── services/
-│   ├── llm_client.py
-│   ├── ocr_service.py
-│   └── parallel_runner.py
+│   └── llm_client.py
 │
 ├── storage/
 │   ├── session_manager.py
 │   └── cleanup.py
 │
 ├── config/
-│   ├── settings.py
-│   └── prompts.py
+│   └── settings.py
 │
 ├── tests/
 │   ├── test_document.py
