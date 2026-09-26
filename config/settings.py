@@ -52,8 +52,8 @@ class Settings(BaseSettings):
     max_parallel_pdfs: int = Field(default=4, ge=1, le=10)
 
     # Session
-    # After this many minutes of inactivity
-    # the session temp directory will be deleted automatically
+    # Minutes from creation, including while the session is still in use.
+    # The session temp directory is deleted once this age is reached.
     session_timeout_minutes: int = Field(default=60, ge=5, le=1440)
 
     @model_validator(mode="after")

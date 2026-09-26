@@ -19,7 +19,7 @@ Scale used on 2026-09-26. Update it when a change moves a grade.
 | `pipeline/orchestrator.py` | B | Two phases, per-PDF and per-question failures contained. Tests cover which files a run answers |
 | `services/llm_client.py` | B | Four providers behind `call_llm`. No tests |
 | `config/settings.py` | B | Validates the active provider and its key. Chunk size is not a setting |
-| `storage/` | B | Session and deletion are implemented. Timeout is measured from `created_at` (TD-10). No tests |
+| `storage/` | B | Session and deletion are implemented. Timeout is measured from `created_at`, as the session spec requires. No tests |
 | `app/` | C | The full path is usable. No UI tests |
 | `docs/` | C | Written against the code on this date. No automatic freshness check (TD-14) |
 | Delivery | C | `Dockerfile` for Hugging Face Spaces (port 8501, `uv sync --no-group dev`). No CI workflow (TD-06) |
