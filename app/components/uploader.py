@@ -27,12 +27,51 @@ _MAX_BYTES = _MAX_MB * 1024 * 1024
 # ---------------------------------------------------------------------------
 
 
+def store_uploads(pdf_dir: Path, files: list[tuple[str, bytes]]) -> list[Path]:
+    """Write accepted uploads into the session directory.
+
+    A file whose name is already stored is replaced when its bytes differ.
+    Files left in the directory from an earlier selection are removed, so
+    a PDF dropped from the uploader is not kept for a later run.
+
+    Args:
+        pdf_dir: Session directory that holds uploaded PDFs.
+        files: Pairs of original filename and file bytes, already size-checked.
+
+    Returns:
+        Absolute paths of the files kept, in upload order.
+    """
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    keep: set[str] = set()
+
+    for name, data in files:
+        safe_name = Path(name).name
+        if not safe_name or safe_name in {".", ".."}:
+            logger.warning("Rejected upload with an unsafe name: %r", name)
+            continue
+        dest = pdf_dir / safe_name
+        if not dest.exists() or dest.read_bytes() != data:
+            dest.write_bytes(data)
+            logger.debug("Saved: %s", dest)
+        keep.add(safe_name)
+        paths.append(dest)
+
+    for existing in pdf_dir.iterdir():
+        if existing.is_file() and existing.name not in keep:
+            existing.unlink()
+            logger.info("Removed upload no longer in the batch: %s", existing.name)
+
+    return paths
+
+
 def render() -> list[Path]:
     """Render the PDF upload widget and return paths to accepted files.
 
     Validates each file for type (enforced by Streamlit) and size.
-    Accepted files are written to the session temporary directory once
-    and reused on subsequent reruns without re-writing.
+    Accepted files are written to the session temporary directory. A later
+    upload with the same name replaces the stored bytes. A file removed
+    from the uploader is deleted from that directory.
 
     Returns:
         Absolute paths to the saved PDFs, ready for the pipeline.
@@ -48,33 +87,30 @@ def render() -> list[Path]:
         help=f"Maximum {_MAX_MB} MB per file.",
     )
 
+    session = get_or_create_session(state.session_id())
+
     if not uploaded:
+        store_uploads(session.pdf_dir, [])
+        state.set_uploaded_files([])
         st.info("Upload at least one PDF to get started.")
         return []
 
-    session = get_or_create_session(state.session_id())
     paths: list[Path] = []
     rejected: list[str] = []
+    accepted: list[tuple[str, bytes]] = []
 
     for file in uploaded:
         if file.size > _MAX_BYTES:
             rejected.append(
-                f"{file.name} "
-                f"({file.size / 1024 / 1024:.1f} MB — limit {_MAX_MB} MB)"
+                f"{file.name} ({file.size / 1024 / 1024:.1f} MB — limit {_MAX_MB} MB)"
             )
             logger.warning(
                 "Rejected oversized file: %s (%d bytes)", file.name, file.size
             )
             continue
+        accepted.append((file.name, file.getvalue()))
 
-        dest = session.pdf_dir / file.name
-        if not dest.exists():
-            # Write once per session — skip on Streamlit reruns to avoid
-            # re-writing the same bytes on every user interaction
-            dest.write_bytes(file.getvalue())
-            logger.debug("Saved: %s", dest)
-
-        paths.append(dest)
+    paths = store_uploads(session.pdf_dir, accepted)
 
     if rejected:
         st.error(

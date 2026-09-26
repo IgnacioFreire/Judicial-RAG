@@ -26,7 +26,7 @@ models.query.DocumentAnswers
 app/                      Streamlit
 ```
 
-`pipeline/orchestrator.py` is the only coordinator. Phase 1 extracts and embeds every PDF together. Phase 2 asks questions one after another, one document after another. What happens when a PDF or a question fails is specified in [`product-specs/variable-extraction.md`](product-specs/variable-extraction.md).
+`pipeline/orchestrator.py` is the only coordinator. Phase 1 extracts and embeds every PDF in the current upload together, and drops indexed filenames that are no longer in that upload. Phase 2 asks questions one after another, only for PDFs indexed in that run. What happens when a PDF or a question fails is specified in [`product-specs/variable-extraction.md`](product-specs/variable-extraction.md).
 
 ## Packages
 

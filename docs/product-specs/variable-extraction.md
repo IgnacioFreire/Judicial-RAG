@@ -60,6 +60,13 @@ The system SHALL keep processing the rest of a batch when one PDF fails to index
 - **THEN** the interface warns that the failed file was not processed
 - **AND** the successful PDF still receives an answer row per saved question
 
+### Requirement: Current upload set
+The system MUST answer only PDFs indexed successfully in the current run. A PDF indexed earlier and absent from this run's upload set MUST NOT be answered.
+
+#### Scenario: Second run without one of the files
+- **WHEN** a session has indexed two PDFs and the user runs again with only one of them
+- **THEN** results contain only the PDF included in the second run
+
 ### Requirement: Run and progress
 The system SHALL enable a run only when at least one PDF is accepted, a schema is saved, and no run is in progress. During a run it MUST show progress and MUST disable upload, schema edits, run, and reset.
 

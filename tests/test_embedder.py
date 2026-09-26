@@ -280,3 +280,25 @@ class TestEmbedDocument:
         collection = get_collection(session_id)
         results = collection.get(ids=[document.chunks[0].chunk_id])
         assert results["documents"][0] == document.chunks[0].text
+
+    @pytest.mark.asyncio
+    async def test_reembed_drops_chunks_from_the_previous_version(
+        self, mock_inference, document: DocumentResult
+    ) -> None:
+        from pipeline.embedder import embed_document, get_collection
+
+        session_id = "session-replace-shorter"
+        await embed_document(document, session_id)
+        shorter = DocumentResult(
+            metadata=DocumentMetadata(
+                filename=document.metadata.filename,
+                total_pages=1,
+                total_chunks=1,
+            ),
+            chunks=[document.chunks[0]],
+        )
+        await embed_document(shorter, session_id)
+        collection = get_collection(session_id)
+        assert collection.count() == 1
+        stored = collection.get(include=["metadatas"])
+        assert stored["ids"] == [document.chunks[0].chunk_id]

@@ -17,7 +17,7 @@ The text stored in Chroma is the chunk without the prefix. The prefix is sent on
 
 ## Collection
 
-In-memory `chromadb.Client()`. One collection per `session_id`. `get_or_create_collection`. Reindexing the same PDF upserts by `chunk_id` (`{filename}_{page}_{chunk_index}`).
+In-memory `chromadb.Client()`. One collection per `session_id`. `get_or_create_collection`. Reindexing the same PDF deletes that filename's chunks first, then upserts by `chunk_id` (`{filename}_{page}_{chunk_index}`), so a shorter replacement does not leave old ids.
 
 Metadata written: `source`, `page`, `chunk_index`, `headings` serialized with `|` (Chroma does not store lists). On read, `vector_store` splits on `|`.
 

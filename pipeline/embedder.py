@@ -120,6 +120,32 @@ def get_collection(session_id: str) -> chromadb.Collection:
     return collection
 
 
+def delete_source(session_id: str, source: str) -> None:
+    """Delete every chunk stored for one PDF inside a session collection.
+
+    Called before re-indexing that filename, and when a run no longer
+    includes it. A missing collection is ignored: the session may not
+    have indexed anything yet.
+
+    Args:
+        session_id: Unique identifier for the user session.
+        source: PDF filename stored in chunk metadata.
+    """
+    name = _collection_name(session_id)
+    try:
+        collection = _chroma.get_collection(name)
+    except Exception:
+        logger.debug("No collection to prune for session=%s", session_id)
+        return
+    try:
+        collection.delete(where={"source": source})
+        logger.info("Deleted indexed source %s (session=%s)", source, session_id)
+    except Exception:
+        logger.debug(
+            "No chunks to delete for source %s (session=%s)", source, session_id
+        )
+
+
 def delete_collection(session_id: str) -> None:
     """Delete the ChromaDB collection for a session.
 
@@ -172,6 +198,8 @@ def _embed_sync(document: DocumentResult, session_id: str) -> None:
         session_id: User session identifier for collection isolation.
     """
     chunks = document.chunks
+    # Drop the previous version first so a shorter file cannot leave old ids.
+    delete_source(session_id, document.metadata.filename)
     if not chunks:
         logger.warning("No chunks to embed for %s", document.metadata.filename)
         return

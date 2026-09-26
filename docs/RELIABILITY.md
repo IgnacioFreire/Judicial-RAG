@@ -14,7 +14,7 @@ A `not_found` row does not say whether retrieval was empty or the model call fai
 
 ## Concurrency
 
-Phase 1 runs per PDF, capped by `MAX_PARALLEL_PDFS` (default 4, minimum 1, maximum 10) on the extractor and embedder thread pools. Phase 2 asks questions in series, in schema order. Documents follow `list_sources` (sorted filenames).
+Phase 1 runs per PDF, capped by `MAX_PARALLEL_PDFS` (default 4, minimum 1, maximum 10) on the extractor and embedder thread pools. Phase 2 asks questions in series, in schema order. Documents are the filenames this run indexed, sorted. PDFs indexed earlier and absent from this upload set are deleted from the session index at the start of the run.
 
 ## Session clock
 
