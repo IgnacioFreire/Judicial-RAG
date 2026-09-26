@@ -10,14 +10,13 @@ dependencies = [
     # PDF extraction
     "docling>=2.0.0",
     # Embeddings
-    "sentence-transformers>=3.0.0",
+    "huggingface-hub>=0.24.0",
+    "numpy>=1.26.0",
     # Vector store
     "chromadb>=0.5.0",
     # LLM providers
     "anthropic>=0.28.0",
     "openai>=1.30.0",
-    # Agentic orchestration
-    "langgraph>=0.2.0",
     # Validation and settings
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
@@ -90,9 +89,6 @@ version = "0.1.0"
 version_files = ["pyproject.toml:version"]
 tag_format = "v$version"
 update_changelog_on_bump = true
-
-[tool.ruff.lint.per-file-ignores]
-"app/main.py" = ["E402"]
 
 [tool.setuptools.packages.find]
 where = ["."]

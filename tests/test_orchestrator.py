@@ -57,8 +57,12 @@ def mock_inference():
     """Avoid the Hugging Face API while still writing Chroma."""
     from unittest.mock import patch
 
+    def _extract(texts, model=None):
+        rows = len(texts) if isinstance(texts, list) else 1
+        return np.ones((rows, 1024), dtype=np.float32)
+
     with patch("pipeline.embedder._inference") as mock:
-        mock.feature_extraction.return_value = np.ones(1024, dtype=np.float32)
+        mock.feature_extraction.side_effect = _extract
         yield mock
 
 

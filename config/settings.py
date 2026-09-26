@@ -97,4 +97,17 @@ class Settings(BaseSettings):
         return self
 
 
-settings = Settings()
+_settings: Settings | None = None
+
+
+class _SettingsProxy:
+    """Load settings on first use so importing this module needs no secrets."""
+
+    def __getattr__(self, name: str):
+        global _settings
+        if _settings is None:
+            _settings = Settings()
+        return getattr(_settings, name)
+
+
+settings = _SettingsProxy()

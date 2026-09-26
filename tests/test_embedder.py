@@ -84,8 +84,13 @@ def empty_document() -> DocumentResult:
 @pytest.fixture
 def mock_inference(mock_vector: list[float]):
     """Patches the HF InferenceClient so no real API calls are made."""
+
+    def _extract(texts, model=None):
+        rows = len(texts) if isinstance(texts, list) else 1
+        return np.tile(np.array(mock_vector, dtype=np.float32), (rows, 1))
+
     with patch("pipeline.embedder._inference") as mock:
-        mock.feature_extraction.return_value = np.array(mock_vector)
+        mock.feature_extraction.side_effect = _extract
         yield mock
 
 
@@ -140,7 +145,7 @@ class TestBuildMetadata:
         from pipeline.embedder import _build_metadata
 
         meta = _build_metadata(chunk)
-        assert meta["headings"] == "FALLO"
+        assert meta["headings"] == '["FALLO"]'
 
     def test_multiple_headings_joined_with_pipe(self) -> None:
         from pipeline.embedder import _build_metadata
@@ -154,17 +159,16 @@ class TestBuildMetadata:
             headings=["FUNDAMENTOS DE DERECHO", "PRIMERO.-"],
         )
         meta = _build_metadata(chunk)
-        assert meta["headings"] == "FUNDAMENTOS DE DERECHO|PRIMERO.-"
+        assert meta["headings"] == '["FUNDAMENTOS DE DERECHO", "PRIMERO.-"]'
 
     def test_empty_headings_serialised_as_empty_string(
         self, chunk_no_headings: Chunk
     ) -> None:
-        # Empty string is the sentinel value — deserialise with guard:
-        # headings = h.split("|") if h else []
+        # "[]" is the empty list. Deserialise with json.loads.
         from pipeline.embedder import _build_metadata
 
         meta = _build_metadata(chunk_no_headings)
-        assert meta["headings"] == ""
+        assert meta["headings"] == "[]"
 
     def test_metadata_fields_present(self, chunk: Chunk) -> None:
         from pipeline.embedder import _build_metadata
@@ -203,16 +207,16 @@ class TestToVector:
 
         _to_vector("passage: texto judicial")
         mock_inference.feature_extraction.assert_called_once()
-        call_args = mock_inference.feature_extraction.call_args
-        assert call_args[0][0].startswith("passage:")
+        sent = mock_inference.feature_extraction.call_args[0][0]
+        assert sent[0].startswith("passage:")
 
     def test_query_prefix_is_passed_to_api(self, mock_inference) -> None:
         from pipeline.embedder import embed_query
 
         embed_query("¿Cuál es el fallo?")
         mock_inference.feature_extraction.assert_called_once()
-        call_args = mock_inference.feature_extraction.call_args
-        assert call_args[0][0].startswith("query:")
+        sent = mock_inference.feature_extraction.call_args[0][0]
+        assert sent[0].startswith("query:")
 
 
 # ---------------------------------------------------------------------------

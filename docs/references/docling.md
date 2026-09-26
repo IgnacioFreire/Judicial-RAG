@@ -4,7 +4,7 @@ Used only in `pipeline/extractor.py`. User-visible consequences are specified in
 
 ## What is on
 
-One `DocumentConverter`, built when the module is imported, with `do_ocr=False`. Extraction reads the digital text layer. The upload spec does not ask the user whether a PDF is scanned.
+One `DocumentConverter`, built on the first extraction, with `do_ocr=False`. Importing the module does not download models. Extraction reads the digital text layer. The upload spec does not ask the user whether a PDF is scanned.
 
 Off: OCR, table structure, page images, picture images. Do not turn them on to "use more of Docling" without a change.
 
@@ -18,4 +18,4 @@ Chunk size is this tokenizer limit. There is no character `CHUNK_SIZE` setting.
 
 ## Thread
 
-Conversion is synchronous and runs on a `ThreadPoolExecutor` of `max_parallel_pdfs` workers (1–10, default 4), so it does not block the event loop. The converter is built once at import. A new one is not built per PDF.
+Conversion is synchronous and runs on a `ThreadPoolExecutor` of `max_parallel_pdfs` workers (1–10, default 4), so it does not block the event loop. The converter is built on the first PDF. A new one is not built per PDF.

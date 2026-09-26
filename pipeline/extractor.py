@@ -26,30 +26,9 @@ from models.document import Chunk, DocumentMetadata, DocumentResult
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Module-level singletons
-# ---------------------------------------------------------------------------
-# All expensive resources are initialised once at import time and shared
-# across every extraction call. Instantiating these inside _extract_sync
-# would reload Docling's layout models on every PDF call.
-
-logger.debug("Initialising extractor module singletons")
-
-_executor = ThreadPoolExecutor(max_workers=settings.max_parallel_pdfs)
-logger.debug("Thread pool created with %d workers", settings.max_parallel_pdfs)
-
-# Tokenizer used only to measure chunk sizes — not for generating embeddings.
-# bert-base-multilingual-cased is chosen because:
-#   - it ships with the sentence_bert_config.json HuggingFaceTokenizer needs
-#   - it covers 104 languages including Spanish
-#   - it is lightweight (996 kB vocab) and loads in < 1s
-# The actual embeddings are produced by intfloat/multilingual-e5-large via the HF
-# Inference API in embedder.py. Chunks stay at 512 tokens so they fit that model.
-_tokenizer = HuggingFaceTokenizer(
-    tokenizer=AutoTokenizer.from_pretrained("bert-base-multilingual-cased"),
-    max_tokens=512,
-)
-logger.debug("Chunking tokenizer loaded: bert-base-multilingual-cased (max_tokens=512)")
+_executor: ThreadPoolExecutor | None = None
+_tokenizer: HuggingFaceTokenizer | None = None
+_converter: DocumentConverter | None = None
 
 
 def _make_pipeline_options() -> PdfPipelineOptions:
@@ -82,8 +61,41 @@ def _make_converter() -> DocumentConverter:
     )
 
 
-_converter = _make_converter()
-logger.debug("Docling converter ready (digital, OCR off)")
+def _pool() -> ThreadPoolExecutor:
+    """Build the extraction thread pool on first use."""
+    global _executor
+    if _executor is None:
+        _executor = ThreadPoolExecutor(max_workers=settings.max_parallel_pdfs)
+        logger.debug("Thread pool created with %d workers", settings.max_parallel_pdfs)
+    return _executor
+
+
+def _chunk_tokenizer() -> HuggingFaceTokenizer:
+    """Load the chunk-size tokenizer on first use.
+
+    bert-base-multilingual-cased measures tokens only. Embeddings are
+    intfloat/multilingual-e5-large in embedder.py. 512 tokens keeps a
+    chunk inside that model's input.
+    """
+    global _tokenizer
+    if _tokenizer is None:
+        _tokenizer = HuggingFaceTokenizer(
+            tokenizer=AutoTokenizer.from_pretrained("bert-base-multilingual-cased"),
+            max_tokens=512,
+        )
+        logger.debug(
+            "Chunking tokenizer loaded: bert-base-multilingual-cased (max_tokens=512)"
+        )
+    return _tokenizer
+
+
+def _get_converter() -> DocumentConverter:
+    """Build the digital Docling converter on first use."""
+    global _converter
+    if _converter is None:
+        _converter = _make_converter()
+        logger.debug("Docling converter ready (digital, OCR off)")
+    return _converter
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +118,7 @@ async def extract(pdf_path: Path) -> DocumentResult:
     """
     logger.info("Queuing extraction: %s", pdf_path.name)
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, _extract_sync, pdf_path)
+    return await loop.run_in_executor(_pool(), _extract_sync, pdf_path)
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +153,7 @@ def _extract_sync(pdf_path: Path) -> DocumentResult:
 
     try:
         t_convert = time.perf_counter()
-        result = _converter.convert(str(pdf_path))
+        result = _get_converter().convert(str(pdf_path))
         logger.debug(
             "Docling conversion complete: %s (%.2fs)",
             pdf_path.name,
@@ -153,7 +165,7 @@ def _extract_sync(pdf_path: Path) -> DocumentResult:
         raise RuntimeError(f"Docling failed to convert {pdf_path.name}: {e}") from e
 
     chunker = HybridChunker(
-        tokenizer=_tokenizer,
+        tokenizer=_chunk_tokenizer(),
         # Merge consecutive undersized chunks that share the same headings
         # to avoid fragmenting short paragraphs across chunk boundaries
         merge_peers=True,

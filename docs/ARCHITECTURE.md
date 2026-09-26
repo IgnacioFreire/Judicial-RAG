@@ -39,7 +39,7 @@ app/                      Streamlit
 | `storage/` | Per-session temp directory and expiry | Interpret PDF content |
 | `app/` | Streamlit: upload, schema, progress, results | Reimplement the pipeline |
 
-`app/main.py` inserts the repo root on `sys.path` before importing packages. Internal imports are absolute (`from pipeline...`, `from models...`).
+`app/main.py` is the Streamlit entry. Internal imports are absolute (`from pipeline...`, `from models...`). The package is installed by `uv sync`, so the script does not insert the repo root on `sys.path`.
 
 ## Dependency direction
 
@@ -60,6 +60,7 @@ A change keeps these edges:
 - `models/` and `config/` do not import the rest of the repo.
 - `pipeline/` does not import `app/` or `storage/`.
 - `app/` does not open Chroma or call Docling. It asks `pipeline.orchestrator.run`.
+- The project is installed into the environment, so `app/main.py` does not rewrite `sys.path`.
 - The only `storage/` edge into the pipeline is `cleanup.py` → `pipeline.embedder.delete_collection`. That exception is known. Do not add more `pipeline/` imports from `storage/`.
 
 Cross-cutting concerns enter at one place:

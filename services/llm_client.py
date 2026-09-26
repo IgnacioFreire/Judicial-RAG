@@ -157,7 +157,7 @@ def _call_openai_compatible(prompt: str) -> str:
     import openai
 
     provider = settings.llm_provider
-    base_url, api_key = _PROVIDER_CONFIG[provider]
+    base_url, api_key = _provider_credentials(provider)
 
     client = openai.OpenAI(base_url=base_url, api_key=api_key)
     completion = client.chat.completions.create(
@@ -181,15 +181,22 @@ def _call_openai_compatible(prompt: str) -> str:
 # Defined after the functions they reference so the file reads top-down:
 # public API → implementations → configuration.
 
-# Maps each OpenAI-compatible provider to its (base_url, api_key) tuple.
-# Add a new entry here when adding a provider that uses _call_openai_compatible.
-_PROVIDER_CONFIG: dict[str, tuple[str, str]] = {
-    "deepseek": (_DEEPSEEK_BASE_URL, settings.deepseek_api_key),
-    "gemini": (_GEMINI_BASE_URL, settings.gemini_api_key),
-}
+
+def _provider_credentials(provider: str) -> tuple[str, str]:
+    """Return the base URL and API key for an OpenAI-compatible provider.
+
+    Keys are read at call time so importing this module does not require
+    settings to be loaded yet.
+    """
+    credentials = {
+        "deepseek": (_DEEPSEEK_BASE_URL, settings.deepseek_api_key),
+        "gemini": (_GEMINI_BASE_URL, settings.gemini_api_key),
+    }
+    return credentials[provider]
+
 
 # Routes provider names to their call implementations.
-# _call_openai_compatible handles any provider in _PROVIDER_CONFIG.
+# _call_openai_compatible handles DeepSeek and Gemini.
 _DISPATCH: dict[str, Callable[[str], str]] = {
     "anthropic": _call_anthropic,
     "openai": _call_openai,

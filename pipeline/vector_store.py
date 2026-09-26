@@ -7,6 +7,7 @@ to a user session and to a specific source document. The embedder
 writes to ChromaDB; this module only reads from it.
 """
 
+import json
 import logging
 
 from pipeline.embedder import embed_query, get_collection
@@ -121,12 +122,25 @@ def list_sources(session_id: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+def _headings(raw: str) -> list[str]:
+    """Decode headings stored as a JSON array."""
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed):
+        return parsed
+    return []
+
+
 def _parse_query_results(raw: dict) -> list[dict]:
     """Parse ChromaDB query output into a flat list of result dicts.
 
     ChromaDB returns parallel lists (documents, metadatas, distances) wrapped
     in an outer batch dimension. This function flattens that dimension and
-    deserialises the pipe-separated headings string back into a list.
+    deserialises the JSON headings array back into a list.
 
     Args:
         raw: Raw dict returned by collection.query().
@@ -145,7 +159,7 @@ def _parse_query_results(raw: dict) -> list[dict]:
             "page": meta.get("page", 1),
             # Deserialise headings from the pipe-separated sentinel stored at
             # index time — empty string means no section headings were detected
-            "headings": meta["headings"].split("|") if meta.get("headings") else [],
+            "headings": _headings(meta.get("headings", "")),
             "chunk_index": meta.get("chunk_index", 0),
             "distance": distance,
         }
