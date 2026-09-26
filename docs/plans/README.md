@@ -23,4 +23,4 @@ Stop for an explicit yes (`go ahead`, `approved`, `yes`) before writing the plan
 
 When the change is done, update the product spec in the same change, delete any debt row it paid, and move the plan to `completed/`.
 
-No plan is in progress. `completed/` is empty.
+In progress: [`manual-notebooks.md`](manual-notebooks.md). `completed/` is empty.
