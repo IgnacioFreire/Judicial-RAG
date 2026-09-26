@@ -43,9 +43,8 @@ logger.debug("Thread pool created with %d workers", settings.max_parallel_pdfs)
 #   - it ships with the sentence_bert_config.json HuggingFaceTokenizer needs
 #   - it covers 104 languages including Spanish
 #   - it is lightweight (996 kB vocab) and loads in < 1s
-# The actual embeddings are produced by gte-multilingual-base via the HF
-# Inference API in embedder.py, which has an 8192-token context window.
-# 512 tokens here keeps chunks well within that limit.
+# The actual embeddings are produced by intfloat/multilingual-e5-large via the HF
+# Inference API in embedder.py. Chunks stay at 512 tokens so they fit that model.
 _tokenizer = HuggingFaceTokenizer(
     tokenizer=AutoTokenizer.from_pretrained("bert-base-multilingual-cased"),
     max_tokens=512,

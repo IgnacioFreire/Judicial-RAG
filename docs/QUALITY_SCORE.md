@@ -18,7 +18,7 @@ Scale used on 2026-09-26. Update it when a change moves a grade.
 | `pipeline/rag_agent.py` | B | Four instructions, fenced-JSON recovery, and a `NOT_FOUND` fallback. Tests cover the format hint and parsing. Citation page is still the top chunk (TD-08) |
 | `pipeline/orchestrator.py` | B | Two phases, per-PDF and per-question failures contained. No tests |
 | `services/llm_client.py` | B | Four providers behind `call_llm`. No tests |
-| `config/settings.py` | C | Validates the active provider and its key. Nobody reads `CHUNK_*` (TD-02) and the embedding default disagrees with `.env.example` (TD-01) |
+| `config/settings.py` | C | Validates the active provider and its key. Nobody reads `CHUNK_*` (TD-02) |
 | `config/prompts.py` | D | Docstring only. Prompts live in `rag_agent.py` (TD-03) |
 | `services/ocr_service.py`, `services/parallel_runner.py` | D | Docstring only (TD-03) |
 | `storage/` | B | Session and deletion are implemented. Timeout is measured from `created_at` (TD-10). No tests |

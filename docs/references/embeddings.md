@@ -11,9 +11,7 @@ That model is asymmetric. The code prefixes:
 - `passage: ` on chunk text at index time.
 - `query: ` on the question at search time.
 
-The text stored in Chroma is the chunk without the prefix. The prefix is sent only to the API.
-
-`.env.example` names `intfloat/multilingual-e5-large-instruct`, which does not use that prefix pair. Do not change the example or the default without picking one model and aligning prefixes, dimension, and settings (TD-01).
+The text stored in Chroma is the chunk without the prefix. The prefix is sent only to the API. `.env.example` uses the same model name.
 
 ## Collection
 
