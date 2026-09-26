@@ -25,7 +25,7 @@ In `app/session_state.py`:
 
 Components use the accessors (`state.schema()`, `state.set_results()`, …). Do not add raw keys in `main.py` or in the viewer.
 
-Current exception: `question_form.py` stores drafts in `st.session_state["question_drafts"]`. A new editor field stays on that draft until **Save schema** builds a `UserQuestion`. Do not move the draft into `session_state.py` unless another component must read it.
+Current exception: `question_form.py` stores drafts in `st.session_state["question_drafts"]`. Each draft and each category row has a stable `id`. Widget keys use that id, so removing a row does not reuse another row's widget state. A new editor field stays on that draft until **Save schema** builds a `UserQuestion`. Do not move the draft into `session_state.py` unless another component must read it.
 
 ## Startup
 
