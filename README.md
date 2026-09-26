@@ -42,17 +42,14 @@ judicial-rag/
 │   └── query.py
 │
 ├── services/
-│   ├── llm_client.py
-│   ├── ocr_service.py
-│   └── parallel_runner.py
+│   └── llm_client.py
 │
 ├── storage/
 │   ├── session_manager.py
 │   └── cleanup.py
 │
 ├── config/
-│   ├── settings.py
-│   └── prompts.py
+│   └── settings.py
 │
 ├── tests/
 │   ├── test_document.py
@@ -130,6 +127,8 @@ uv run pytest --cov=pipeline --cov-report=term-missing
 uv run ruff check .
 uv run ruff format .
 ```
+
+GitHub Actions runs the same ruff checks and `pytest` on every push and pull request.
 
 ### Commits
 

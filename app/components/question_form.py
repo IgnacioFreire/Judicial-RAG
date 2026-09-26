@@ -7,6 +7,7 @@ types. Classification questions get an extra category editor.
 """
 
 import logging
+import uuid
 
 import streamlit as st
 from pydantic import ValidationError
@@ -53,6 +54,8 @@ def render() -> QuestionSchema | None:
         st.session_state[_DRAFTS_KEY] = [_empty_draft()]
 
     drafts: list[dict] = st.session_state[_DRAFTS_KEY]
+    for draft in drafts:
+        _ensure_id(draft)
 
     for i, draft in enumerate(drafts):
         _render_editor(i, draft)
@@ -110,7 +113,7 @@ def _render_editor(idx: int, draft: dict) -> None:
             draft["label"] = st.text_input(
                 "Label",
                 value=draft.get("label", ""),
-                key=f"label_{idx}",
+                key=_widget_key(draft["id"], "label"),
                 placeholder="e.g. Sentencing date",
                 disabled=state.is_processing(),
             )
@@ -122,7 +125,7 @@ def _render_editor(idx: int, draft: dict) -> None:
                 index=_TYPE_VALUES.index(
                     draft.get("question_type", QuestionType.EXTRACTION)
                 ),
-                key=f"type_{idx}",
+                key=_widget_key(draft["id"], "type"),
                 disabled=state.is_processing(),
             )
             draft["question_type"] = _TYPE_OPTIONS[selected_key]
@@ -130,7 +133,7 @@ def _render_editor(idx: int, draft: dict) -> None:
         draft["question"] = st.text_area(
             "Question / extraction rule",
             value=draft.get("question", ""),
-            key=f"question_{idx}",
+            key=_widget_key(draft["id"], "question"),
             placeholder="e.g. What is the date of the sentence? Format: DD/MM/YYYY",
             disabled=state.is_processing(),
         )
@@ -141,7 +144,7 @@ def _render_editor(idx: int, draft: dict) -> None:
             draft["output_format"] = st.text_input(
                 "Expected output format (optional)",
                 value=draft.get("output_format", ""),
-                key=f"fmt_{idx}",
+                key=_widget_key(draft["id"], "fmt"),
                 placeholder="e.g. DD/MM/YYYY, integer",
                 disabled=state.is_processing(),
             )
@@ -150,43 +153,43 @@ def _render_editor(idx: int, draft: dict) -> None:
             draft["notes"] = st.text_input(
                 "Additional rules (optional)",
                 value=draft.get("notes", ""),
-                key=f"notes_{idx}",
+                key=_widget_key(draft["id"], "notes"),
                 placeholder="e.g. Round to nearest integer",
                 disabled=state.is_processing(),
             )
 
         if draft["question_type"] == QuestionType.CLASSIFICATION:
-            _render_category_editor(idx, draft)
+            _render_category_editor(draft)
 
         if st.button(
             "Remove question",
-            key=f"remove_{idx}",
+            key=_widget_key(draft["id"], "remove"),
             disabled=state.is_processing(),
         ):
             st.session_state[_DRAFTS_KEY].pop(idx)
             st.rerun()
 
 
-def _render_category_editor(idx: int, draft: dict) -> None:
+def _render_category_editor(draft: dict) -> None:
     """Render the category list editor for classification questions.
 
     Args:
-        idx:   Question index for unique widget keys.
         draft: Mutable dict holding the current field values.
     """
     st.markdown("**Categories**")
 
     if "categories" not in draft:
-        draft["categories"] = [{"code": "", "label": ""}]
+        draft["categories"] = []
 
-    for j, cat in enumerate(draft["categories"]):
+    for cat in draft["categories"]:
+        _ensure_id(cat)
         col_code, col_label, col_rm = st.columns([1, 3, 1])
 
         with col_code:
             cat["code"] = st.text_input(
                 "Code",
                 value=cat.get("code", ""),
-                key=f"cat_code_{idx}_{j}",
+                key=_widget_key(cat["id"], "cat_code"),
                 placeholder="1",
                 disabled=state.is_processing(),
             )
@@ -195,23 +198,27 @@ def _render_category_editor(idx: int, draft: dict) -> None:
             cat["label"] = st.text_input(
                 "Label",
                 value=cat.get("label", ""),
-                key=f"cat_label_{idx}_{j}",
+                key=_widget_key(cat["id"], "cat_label"),
                 placeholder="Conviction",
                 disabled=state.is_processing(),
             )
 
         with col_rm:
             st.write("")
-            if st.button("✕", key=f"rm_cat_{idx}_{j}"):
-                draft["categories"].pop(j)
+            if st.button(
+                "✕",
+                key=_widget_key(cat["id"], "rm_cat"),
+                disabled=state.is_processing(),
+            ):
+                draft["categories"].remove(cat)
                 st.rerun()
 
     if st.button(
         "Add category",
-        key=f"add_cat_{idx}",
+        key=_widget_key(draft["id"], "add_cat"),
         disabled=state.is_processing(),
     ):
-        draft["categories"].append({"code": "", "label": ""})
+        draft["categories"].append(_empty_category())
         st.rerun()
 
 
@@ -274,6 +281,7 @@ def _empty_draft() -> dict:
         Dict with sensible defaults for every question editor field.
     """
     return {
+        "id": str(uuid.uuid4()),
         "label": "",
         "question": "",
         "question_type": QuestionType.EXTRACTION,
@@ -282,3 +290,20 @@ def _empty_draft() -> dict:
         "categories": [],
         "expanded": True,
     }
+
+
+def _empty_category() -> dict:
+    """Return a blank category row with a stable widget id."""
+    return {"id": str(uuid.uuid4()), "code": "", "label": ""}
+
+
+def _ensure_id(item: dict) -> str:
+    """Attach a stable id to a draft or category loaded from older state."""
+    if not item.get("id"):
+        item["id"] = str(uuid.uuid4())
+    return item["id"]
+
+
+def _widget_key(owner_id: str, field: str) -> str:
+    """Build a Streamlit widget key that does not depend on list position."""
+    return f"{field}_{owner_id}"

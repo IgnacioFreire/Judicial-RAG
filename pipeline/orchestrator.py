@@ -11,12 +11,11 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from models.query import AgentAnswer, AnswerConfidence, DocumentAnswers, QuestionSchema
-from pipeline.embedder import embed_document
-from pipeline.extractor import extract
+from pipeline.embedder import delete_source, embed_document
 from pipeline.rag_agent import answer_question
 from pipeline.vector_store import list_sources
 
@@ -28,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class Stage(str, Enum):
+class Stage(StrEnum):
     """Pipeline stage emitted to the UI via the progress callback.
 
     Inherits from str so values serialise naturally in Streamlit widgets
@@ -78,7 +77,6 @@ async def run(
     schema: QuestionSchema,
     session_id: str,
     on_progress: OnProgress | None = None,
-    is_scanned: bool = False,
 ) -> list[DocumentAnswers]:
     """Run the full pipeline for a list of PDFs and a question schema.
 
@@ -89,7 +87,8 @@ async def run(
        within LLM API rate limits.
 
     Failures in phase 1 are isolated per document — a bad PDF does not
-    abort the rest of the batch. Failures in phase 2 produce NOT_FOUND
+    abort the rest of the batch. Phase 2 answers only the PDFs this run
+    indexed, in filename order. Failures in phase 2 produce NOT_FOUND
     answers so every question always has a placeholder in the output.
 
     Args:
@@ -97,11 +96,10 @@ async def run(
         schema:      User-defined question schema applied to every document.
         session_id:  User session identifier for vector store isolation.
         on_progress: Optional callback invoked on every progress event.
-        is_scanned:  Whether the PDFs require OCR for text extraction.
 
     Returns:
-        One DocumentAnswers per PDF, each containing one AgentAnswer per
-        question in the schema, ordered by source filename.
+        One DocumentAnswers per PDF indexed in this run, each containing
+        one AgentAnswer per question in the schema, ordered by filename.
     """
     total_pdfs = len(pdf_paths)
     total_questions = len(schema.questions)
@@ -123,10 +121,9 @@ async def run(
         ),
     )
 
-    await _index_all(pdf_paths, session_id, is_scanned, on_progress)
-
-    sources = list_sources(session_id)
-    results = _answer_all(sources, schema, session_id, on_progress)
+    _drop_stale_sources(session_id, pdf_paths)
+    indexed = await _index_all(pdf_paths, session_id, on_progress)
+    results = _answer_all(sorted(set(indexed)), schema, session_id, on_progress)
 
     logger.info(
         "Pipeline complete: %d document(s), %d answer(s) (session=%s)",
@@ -154,12 +151,19 @@ async def run(
 # ---------------------------------------------------------------------------
 
 
+def _drop_stale_sources(session_id: str, pdf_paths: list[Path]) -> None:
+    """Remove indexed PDFs that are not part of this run's upload set."""
+    keep = {path.name for path in pdf_paths}
+    for source in list_sources(session_id):
+        if source not in keep:
+            delete_source(session_id, source)
+
+
 async def _index_all(
     pdf_paths: list[Path],
     session_id: str,
-    is_scanned: bool,
     on_progress: OnProgress | None,
-) -> None:
+) -> list[str]:
     """Extract and embed all PDFs concurrently via asyncio.gather.
 
     return_exceptions=True ensures a failure in one task does not cancel
@@ -168,35 +172,51 @@ async def _index_all(
     Args:
         pdf_paths:   PDFs to index.
         session_id:  User session identifier.
-        is_scanned:  Whether to enable OCR.
         on_progress: Progress callback.
+
+    Returns:
+        Filenames that were indexed and can be answered. A PDF that
+        produced no chunks is a failure and is omitted.
     """
     total = len(pdf_paths)
     tasks = [
-        _index_one(path, session_id, is_scanned, on_progress, idx, total)
+        _index_one(path, session_id, on_progress, idx, total)
         for idx, path in enumerate(pdf_paths, start=1)
     ]
-    await asyncio.gather(*tasks, return_exceptions=True)
+    outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+    indexed: list[str] = []
+    for outcome in outcomes:
+        if isinstance(outcome, str):
+            indexed.append(outcome)
+        elif isinstance(outcome, BaseException):
+            logger.error("Indexing task failed", exc_info=outcome)
+    return indexed
 
 
 async def _index_one(
     pdf_path: Path,
     session_id: str,
-    is_scanned: bool,
     on_progress: OnProgress | None,
     current: int,
     total: int,
-) -> None:
+) -> str | None:
     """Extract and embed a single PDF, emitting progress at each stage.
+
+    Docling is imported here so importing the orchestrator does not load
+    extraction models.
 
     Args:
         pdf_path:    Absolute path to the PDF.
         session_id:  User session identifier.
-        is_scanned:  Whether to enable OCR.
         on_progress: Progress callback.
         current:     1-based index of this PDF in the batch.
         total:       Total number of PDFs in the batch.
+
+    Returns:
+        The PDF filename when it was indexed, otherwise None.
     """
+    from pipeline.extractor import extract
+
     source = pdf_path.name
 
     try:
@@ -211,8 +231,10 @@ async def _index_one(
             ),
         )
 
-        document = await extract(pdf_path, is_scanned=is_scanned)
+        document = await extract(pdf_path)
         logger.debug("Extracted %s: %d chunks", source, document.metadata.total_chunks)
+        if document.metadata.total_chunks == 0:
+            raise RuntimeError("produced no text")
 
         _emit(
             on_progress,
@@ -227,6 +249,7 @@ async def _index_one(
 
         await embed_document(document, session_id)
         logger.debug("Indexed %s (%d/%d)", source, current, total)
+        return source
 
     except Exception as e:
         logger.exception("Failed to index %s", source)
@@ -241,6 +264,7 @@ async def _index_one(
                 error=e,
             ),
         )
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +285,7 @@ def _answer_all(
     them consistently regardless of which document is being processed.
 
     Args:
-        sources:     Indexed PDF filenames from the vector store.
+        sources:     Filenames indexed in this run, already sorted.
         schema:      Question schema to apply to every document.
         session_id:  User session identifier.
         on_progress: Progress callback.

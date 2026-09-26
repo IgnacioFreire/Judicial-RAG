@@ -1,9 +1,9 @@
 # Dockerfile
 #
 # Builds the production image for Hugging Face Spaces.
-# Installs production dependencies only (no dev group),
-# pre-downloads Docling models during build so the first
-# request does not trigger a cold model download at runtime.
+# Installs production dependencies only (no dev group).
+# Docling models download on the first extraction, not during this build.
+# .dockerignore keeps .env and PDFs out of the build context.
 
 FROM python:3.11-slim
 

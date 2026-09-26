@@ -4,7 +4,6 @@
 
 # Temporary session data
 temp_sessions/
-chroma_db/
 
 # Never commit PDFs (sensitive content)
 *.pdf

@@ -36,3 +36,18 @@ The system SHALL extract every uploaded PDF as a digital document. It MUST NOT a
 #### Scenario: Any accepted PDF
 - **WHEN** the user runs the pipeline on an accepted PDF
 - **THEN** extraction runs without OCR
+
+### Requirement: Same file name
+The system MUST replace the stored bytes when an accepted upload uses a name already stored in the session.
+
+#### Scenario: Second upload with the same name
+- **WHEN** the user uploads a PDF whose name matches a file already stored
+- **THEN** a later run reads the new bytes
+
+### Requirement: File removed from the uploader
+The system MUST delete a PDF that is no longer in the uploader from the session directory. The next run MUST NOT answer it.
+
+#### Scenario: One of two files removed
+- **WHEN** the user had two accepted PDFs and removes one from the uploader
+- **THEN** the removed file is deleted from the session directory
+- **AND** the next run answers only the PDF that remains

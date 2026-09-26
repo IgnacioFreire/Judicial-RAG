@@ -14,9 +14,14 @@ The system SHALL return one answer for every saved question on every document th
 - **THEN** the row includes the answer text, a confidence of high, medium, or low, and whether the answer was copied or inferred
 
 #### Scenario: Value absent or the model call fails
-- **WHEN** the document has no relevant text, the model call fails, or the model response is not valid JSON
+- **WHEN** the document has no relevant text, the model call fails, or the model response contains no JSON object
 - **THEN** that row has confidence not_found
 - **AND** the other questions for that document are still answered
+
+#### Scenario: JSON wrapped in a markdown fence
+- **WHEN** the model returns one JSON object inside a markdown fence, or with text around that object
+- **THEN** the row uses that object
+- **AND** the response body is not written to the log when parsing fails
 
 ### Requirement: Question types
 The system MUST instruct the model according to the saved question type. Extraction SHALL be requested as a verbatim copy marked direct. Calculation SHALL be requested as a derived value marked inferred. Classification SHALL be requested as exactly one category code from that question's list, marked direct when the text states the category and inferred when the match is implicit. Explanation SHALL be requested in Spanish and marked inferred. The system does not check that the model obeyed the type after the call returns.
@@ -58,7 +63,20 @@ The system SHALL keep processing the rest of a batch when one PDF fails to index
 #### Scenario: One bad PDF
 - **WHEN** one PDF fails during extraction or embedding and another PDF succeeds
 - **THEN** the interface warns that the failed file was not processed
+- **AND** the warning is still visible after the run finishes
 - **AND** the successful PDF still receives an answer row per saved question
+
+#### Scenario: PDF with no text
+- **WHEN** extraction finishes but produces no text chunks
+- **THEN** the interface warns that the file was not processed
+- **AND** that PDF does not appear as an answered document
+
+### Requirement: Current upload set
+The system MUST answer only PDFs indexed successfully in the current run. A PDF indexed earlier and absent from this run's upload set MUST NOT be answered.
+
+#### Scenario: Second run without one of the files
+- **WHEN** a session has indexed two PDFs and the user runs again with only one of them
+- **THEN** results contain only the PDF included in the second run
 
 ### Requirement: Run and progress
 The system SHALL enable a run only when at least one PDF is accepted, a schema is saved, and no run is in progress. During a run it MUST show progress and MUST disable upload, schema edits, run, and reset.

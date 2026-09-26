@@ -11,15 +11,13 @@ That model is asymmetric. The code prefixes:
 - `passage: ` on chunk text at index time.
 - `query: ` on the question at search time.
 
-The text stored in Chroma is the chunk without the prefix. The prefix is sent only to the API.
-
-`.env.example` names `intfloat/multilingual-e5-large-instruct`, which does not use that prefix pair. Do not change the example or the default without picking one model and aligning prefixes, dimension, and settings (TD-01).
+The text stored in Chroma is the chunk without the prefix. The prefix is sent only to the API. `.env.example` uses the same model name.
 
 ## Collection
 
-In-memory `chromadb.Client()`. One collection per `session_id`. `get_or_create_collection`. Reindexing the same PDF upserts by `chunk_id` (`{filename}_{page}_{chunk_index}`).
+In-memory `chromadb.Client()`. One collection per `session_id`. `get_or_create_collection`. Reindexing the same PDF deletes that filename's chunks first, then upserts by `chunk_id` (`{filename}_{page}_{chunk_index}`), so a shorter replacement does not leave old ids. A batch of chunks is embedded in one Inference API call.
 
-Metadata written: `source`, `page`, `chunk_index`, `headings` serialized with `|` (Chroma does not store lists). On read, `vector_store` splits on `|`.
+Metadata written: `source`, `page`, `chunk_index`, `headings` serialized as a JSON array (Chroma does not store lists). On read, `vector_store` parses that array.
 
 ## Search
 

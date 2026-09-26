@@ -36,12 +36,17 @@ Each question MUST have a non-empty label, a non-empty question text, and one ty
 - **THEN** the schema is saved
 
 ### Requirement: Optional hints
-A question MAY include an output-format hint and extra notes. When present, those notes MUST be given to the model as additional rules for that question only.
+A question MAY include an output-format hint and extra notes. When notes are present, they MUST be given to the model as additional rules for that question only. When an output-format hint is present, it MUST be given to the model for that question only.
 
 #### Scenario: Notes on one question
 - **WHEN** a saved question includes notes
 - **THEN** those notes apply only to that question
 - **AND** they do not change the rules of the other questions
+
+#### Scenario: Output format on one question
+- **WHEN** a saved question includes an output format
+- **THEN** that hint is included in the prompt for that question
+- **AND** a question without an output format does not receive that hint
 
 ### Requirement: Schema lifetime
 The system SHALL keep the saved schema in the current UI session only. It MUST NOT write the schema to disk.

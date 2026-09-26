@@ -11,35 +11,31 @@ Models:
     Category: a single option in a classification question.
     UserQuestion: a question or variable defined by the user, with its type,
         rules and categories if applicable.
-    QuestionSchema: the full set of questions defined by a user,
-        persisted and reused across sessions.
+    QuestionSchema: the full set of questions defined by a user for the
+        current UI session.
     Citation: the source fragment the agent used to build an answer.
     AgentAnswer: the full agent response for one question on one document.
     DocumentAnswers: all answers for a single document.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, model_validator
 
 
-class QuestionType(str, Enum):
+class QuestionType(StrEnum):
     """Strategy the agent uses to answer a question.
 
-    Each type maps to a dedicated skill in pipeline/skills/:
+    Each type maps to an instruction in pipeline/rag_agent.py:
 
     Attributes:
         EXTRACTION: copy a value directly from the text (e.g. ID, date, name).
-            Skill: skills/extraction.py
         CALCULATION: derive a value by operating on extracted data
             (e.g. months between two dates).
-            Skill: skills/calculation.py
         CLASSIFICATION: assign content to a category from a closed list
             (e.g. sex of victim: 1=Woman, 2=Man).
-            Skill: skills/classification.py
         EXPLANATION: explain why or how something happened, requiring
             reasoning over the text rather than direct extraction.
-            Skill: skills/explanation.py
     """
 
     EXTRACTION = "extraction"
@@ -48,7 +44,7 @@ class QuestionType(str, Enum):
     EXPLANATION = "explanation"
 
 
-class AnswerConfidence(str, Enum):
+class AnswerConfidence(StrEnum):
     """How confident the agent is in its answer.
 
     Assigned by the agent based on the quality of evidence found.
@@ -68,7 +64,7 @@ class AnswerConfidence(str, Enum):
     NOT_FOUND = "not_found"
 
 
-class AnswerSource(str, Enum):
+class AnswerSource(StrEnum):
     """How the agent obtained the answer.
 
     Attributes:
@@ -106,7 +102,7 @@ class UserQuestion(BaseModel):
         label: Short display name shown in the UI (e.g. "Sentencing date").
         question: Full instruction sent to the agent, including extraction
             rules and format requirements.
-        question_type: Determines which skill is invoked in the pipeline.
+        question_type: Determines which instruction the agent uses.
         categories: Required when question_type is CLASSIFICATION. Must
             contain at least two options.
         output_format: Expected output format hint (e.g. "DD/MM/YYYY",
@@ -142,10 +138,10 @@ class UserQuestion(BaseModel):
 
 
 class QuestionSchema(BaseModel):
-    """Full set of questions defined by a user, persisted across sessions.
+    """Full set of questions defined by a user for the current UI session.
 
-    Serialised to JSON for storage and reuse. Designed to support
-    import from external files (Excel, JSON) in the future.
+    Kept in Streamlit session state only. It is not written to disk and
+    it is not restored in a new UI session.
 
     Attributes:
         name: Descriptive name.

@@ -3,8 +3,8 @@ cleanup.py
 
 Cleanup routines for temporary session data.
 Deletes temporary directories and ChromaDB collections when a session
-ends explicitly or when the configured inactivity timeout is exceeded.
-Designed to run both on explicit logout and on a periodic schedule.
+ends explicitly or when its age exceeds the configured timeout.
+The clock starts at creation, not at the last interaction.
 """
 
 import logging

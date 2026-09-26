@@ -26,20 +26,20 @@ models.query.DocumentAnswers
 app/                      Streamlit
 ```
 
-`pipeline/orchestrator.py` is the only coordinator. Phase 1 extracts and embeds every PDF together. Phase 2 asks questions one after another, one document after another. What happens when a PDF or a question fails is specified in [`product-specs/variable-extraction.md`](product-specs/variable-extraction.md).
+`pipeline/orchestrator.py` is the only coordinator. Phase 1 extracts and embeds every PDF in the current upload together, and drops indexed filenames that are no longer in that upload. Phase 2 asks questions one after another, only for PDFs indexed in that run. What happens when a PDF or a question fails is specified in [`product-specs/variable-extraction.md`](product-specs/variable-extraction.md).
 
 ## Packages
 
 | Package | Responsibility | Does not |
 |---|---|---|
 | `models/` | Pydantic contracts for documents and for questions and answers | I/O, network, Streamlit |
-| `config/` | Settings from the environment (`settings.py`). `prompts.py` is empty | Call the LLM or read PDFs |
+| `config/` | Settings from the environment (`settings.py`) | Call the LLM or read PDFs |
 | `services/` | `llm_client.py` routes Anthropic, OpenAI, DeepSeek, and Gemini | Choose chunks or the question type |
 | `pipeline/` | Extract, index, search, and answer | Render UI or own the temp directory |
 | `storage/` | Per-session temp directory and expiry | Interpret PDF content |
 | `app/` | Streamlit: upload, schema, progress, results | Reimplement the pipeline |
 
-`app/main.py` inserts the repo root on `sys.path` before importing packages. Internal imports are absolute (`from pipeline...`, `from models...`).
+`app/main.py` is the Streamlit entry. Internal imports are absolute (`from pipeline...`, `from models...`). The package is installed by `uv sync`, so the script does not insert the repo root on `sys.path`.
 
 ## Dependency direction
 
@@ -60,6 +60,7 @@ A change keeps these edges:
 - `models/` and `config/` do not import the rest of the repo.
 - `pipeline/` does not import `app/` or `storage/`.
 - `app/` does not open Chroma or call Docling. It asks `pipeline.orchestrator.run`.
+- The project is installed into the environment, so `app/main.py` does not rewrite `sys.path`.
 - The only `storage/` edge into the pipeline is `cleanup.py` → `pipeline.embedder.delete_collection`. That exception is known. Do not add more `pipeline/` imports from `storage/`.
 
 Cross-cutting concerns enter at one place:

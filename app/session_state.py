@@ -25,6 +25,7 @@ _SCHEMA = "schema"
 _RESULTS = "results"
 _IS_PROCESSING = "is_processing"
 _UPLOADED_FILES = "uploaded_files"
+_RUN_ERRORS = "run_errors"
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +50,7 @@ def init() -> None:
     st.session_state.setdefault(_RESULTS, None)
     st.session_state.setdefault(_IS_PROCESSING, False)
     st.session_state.setdefault(_UPLOADED_FILES, [])
+    st.session_state.setdefault(_RUN_ERRORS, [])
 
     # Ensure the backend Session object exists for this ID so the
     # temporary directory and ChromaDB collection are ready before
@@ -147,6 +149,24 @@ def set_uploaded_files(value: list) -> None:
     st.session_state[_UPLOADED_FILES] = value
 
 
+def run_errors() -> list[str]:
+    """Return failure messages from the latest run.
+
+    Returns:
+        Messages for PDFs that were not indexed. Empty before the first run.
+    """
+    return st.session_state[_RUN_ERRORS]
+
+
+def set_run_errors(value: list[str]) -> None:
+    """Persist failure messages so they survive the rerun at the end of a run.
+
+    Args:
+        value: One message per PDF that failed to index.
+    """
+    st.session_state[_RUN_ERRORS] = value
+
+
 def reset() -> None:
     """Clear results and uploads to prepare for a new pipeline run.
 
@@ -156,3 +176,4 @@ def reset() -> None:
     st.session_state[_RESULTS] = None
     st.session_state[_UPLOADED_FILES] = []
     st.session_state[_IS_PROCESSING] = False
+    st.session_state[_RUN_ERRORS] = []

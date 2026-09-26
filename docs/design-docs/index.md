@@ -20,4 +20,4 @@ Observable behavior is not duplicated here. It lives in [`../product-specs/`](..
 | [`../tech-debt-tracker.md`](../tech-debt-tracker.md) | Open drift, not a plan | Each row names a file |
 | [`../plans/README.md`](../plans/README.md) | How a change is planned. Finished plans sit in `plans/completed/` | Empty. No plan is in progress |
 
-Nothing lints freshness or links. When a change alters behavior a doc describes, update the product spec in the same change. If you cannot update it yet, add a row to the tracker.
+Nothing checks that a doc was re-read after a code change. Relative links in `docs/`, `AGENTS.md`, and `README.md` are checked by `tests/test_doc_links.py`. When a change alters behavior a doc describes, update the product spec in the same change. If you cannot update it yet, add a row to the tracker.

@@ -9,6 +9,7 @@ documents from different users never mix.
 """
 
 import asyncio
+import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -30,15 +31,8 @@ logger = logging.getLogger(__name__)
 _chroma = chromadb.Client()
 logger.debug("ChromaDB in-memory client initialised")
 
-_inference = InferenceClient(
-    provider="hf-inference",
-    api_key=settings.huggingface_api_key,
-)
-logger.debug("HF InferenceClient initialised: %s", settings.embedding_model)
-
-# I/O-bound embedding API calls run in a thread pool to avoid blocking
-# the event loop while waiting for the HF Inference API to respond.
-_executor = ThreadPoolExecutor(max_workers=settings.max_parallel_pdfs)
+_inference = None
+_executor: ThreadPoolExecutor | None = None
 
 # multilingual-e5-large uses asymmetric prefixes for retrieval:
 # "passage: " for documents at index time, "query: " for questions at
@@ -74,7 +68,7 @@ async def embed_document(document: DocumentResult, session_id: str) -> None:
         session_id,
     )
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(_executor, _embed_sync, document, session_id)
+    await loop.run_in_executor(_pool(), _embed_sync, document, session_id)
     logger.info(
         "Embedding complete: %s (session=%s)",
         document.metadata.filename,
@@ -95,7 +89,7 @@ def embed_query(text: str) -> list[float]:
     Returns:
         1024-dimensional float vector ready for ChromaDB similarity search.
     """
-    logger.debug("Embedding query: %r", text[:80])
+    logger.debug("Embedding query (%d chars)", len(text))
     return _to_vector(f"{_QUERY_PREFIX}{text}")
 
 
@@ -120,6 +114,32 @@ def get_collection(session_id: str) -> chromadb.Collection:
     return collection
 
 
+def delete_source(session_id: str, source: str) -> None:
+    """Delete every chunk stored for one PDF inside a session collection.
+
+    Called before re-indexing that filename, and when a run no longer
+    includes it. A missing collection is ignored: the session may not
+    have indexed anything yet.
+
+    Args:
+        session_id: Unique identifier for the user session.
+        source: PDF filename stored in chunk metadata.
+    """
+    name = _collection_name(session_id)
+    try:
+        collection = _chroma.get_collection(name)
+    except Exception:
+        logger.debug("No collection to prune for session=%s", session_id)
+        return
+    try:
+        collection.delete(where={"source": source})
+        logger.info("Deleted indexed source %s (session=%s)", source, session_id)
+    except Exception:
+        logger.debug(
+            "No chunks to delete for source %s (session=%s)", source, session_id
+        )
+
+
 def delete_collection(session_id: str) -> None:
     """Delete the ChromaDB collection for a session.
 
@@ -141,6 +161,26 @@ def delete_collection(session_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Internal implementation
 # ---------------------------------------------------------------------------
+
+
+def _client() -> InferenceClient:
+    """Build the Hugging Face client on first use."""
+    global _inference
+    if _inference is None:
+        _inference = InferenceClient(
+            provider="hf-inference",
+            api_key=settings.huggingface_api_key,
+        )
+        logger.debug("HF InferenceClient initialised: %s", settings.embedding_model)
+    return _inference
+
+
+def _pool() -> ThreadPoolExecutor:
+    """Build the embedding thread pool on first use."""
+    global _executor
+    if _executor is None:
+        _executor = ThreadPoolExecutor(max_workers=settings.max_parallel_pdfs)
+    return _executor
 
 
 def _collection_name(session_id: str) -> str:
@@ -172,6 +212,8 @@ def _embed_sync(document: DocumentResult, session_id: str) -> None:
         session_id: User session identifier for collection isolation.
     """
     chunks = document.chunks
+    # Drop the previous version first so a shorter file cannot leave old ids.
+    delete_source(session_id, document.metadata.filename)
     if not chunks:
         logger.warning("No chunks to embed for %s", document.metadata.filename)
         return
@@ -199,7 +241,7 @@ def _upsert_batch(collection: chromadb.Collection, chunks: list[Chunk]) -> None:
         chunks: Batch of chunks to embed and store.
     """
     texts = [f"{_PASSAGE_PREFIX}{chunk.text}" for chunk in chunks]
-    embeddings = [_to_vector(text) for text in texts]
+    embeddings = _to_vectors(texts)
 
     collection.upsert(
         ids=[chunk.chunk_id for chunk in chunks],
@@ -215,26 +257,48 @@ def _upsert_batch(collection: chromadb.Collection, chunks: list[Chunk]) -> None:
 def _to_vector(text: str) -> list[float]:
     """Embed a single text string via the HF Inference API.
 
-    multilingual-e5-large applies mean pooling internally and returns a
-    flat (1024,) array, so no additional pooling is needed here.
-
     Args:
         text: Text to embed, including the appropriate prefix.
 
     Returns:
         1024-dimensional float vector as a Python list.
     """
-    raw = _inference.feature_extraction(text, model=settings.embedding_model)
-    return np.array(raw).tolist()
+    return _to_vectors([text])[0]
+
+
+def _to_vectors(texts: list[str]) -> list[list[float]]:
+    """Embed a batch of texts in one HF Inference API call.
+
+    Args:
+        texts: Texts to embed, including the appropriate prefix.
+
+    Returns:
+        One float vector per text, each of length embedding_dimensions.
+
+    Raises:
+        RuntimeError: If the API shape does not match the batch or the
+            configured dimension.
+    """
+    if not texts:
+        return []
+    raw = _client().feature_extraction(texts, model=settings.embedding_model)
+    array = np.asarray(raw, dtype=float)
+    if array.ndim == 1:
+        array = array.reshape(1, -1)
+    expected = settings.embedding_dimensions
+    if array.ndim != 2 or array.shape != (len(texts), expected):
+        raise RuntimeError(
+            f"Expected embeddings shape {(len(texts), expected)}, got {array.shape}"
+        )
+    return array.tolist()
 
 
 def _build_metadata(chunk: Chunk) -> dict[str, str | int]:
     """Build the ChromaDB metadata dict for a chunk.
 
     ChromaDB metadata values must be strings, integers, floats or booleans.
-    The headings list is serialised as a pipe-separated string because
-    ChromaDB does not support list values. Deserialise with
-    `headings.split("|")` at retrieval time, guarding for the empty string.
+    The headings list is serialised as a JSON array because ChromaDB does
+    not support list values. Deserialise with json.loads at retrieval time.
 
     Args:
         chunk: Source chunk to extract metadata from.
@@ -246,5 +310,5 @@ def _build_metadata(chunk: Chunk) -> dict[str, str | int]:
         "source": chunk.source,
         "page": chunk.page,
         "chunk_index": chunk.chunk_index,
-        "headings": "|".join(chunk.headings) if chunk.headings else "",
+        "headings": json.dumps(chunk.headings),
     }
