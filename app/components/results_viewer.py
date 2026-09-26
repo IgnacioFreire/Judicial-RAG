@@ -106,6 +106,6 @@ def _render_answer(answer: AgentAnswer) -> None:
     if answer.citation:
         with st.container(border=True):
             st.caption(
-                f"Page {answer.citation.page} — " f"score {answer.citation.score:.2f}"
+                f"Page {answer.citation.page} — score {answer.citation.score:.2f}"
             )
             st.text(answer.citation.text)

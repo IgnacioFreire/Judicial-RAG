@@ -18,12 +18,12 @@ Models:
     DocumentAnswers: all answers for a single document.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, model_validator
 
 
-class QuestionType(str, Enum):
+class QuestionType(StrEnum):
     """Strategy the agent uses to answer a question.
 
     Each type maps to an instruction in pipeline/rag_agent.py:
@@ -44,7 +44,7 @@ class QuestionType(str, Enum):
     EXPLANATION = "explanation"
 
 
-class AnswerConfidence(str, Enum):
+class AnswerConfidence(StrEnum):
     """How confident the agent is in its answer.
 
     Assigned by the agent based on the quality of evidence found.
@@ -64,7 +64,7 @@ class AnswerConfidence(str, Enum):
     NOT_FOUND = "not_found"
 
 
-class AnswerSource(str, Enum):
+class AnswerSource(StrEnum):
     """How the agent obtained the answer.
 
     Attributes:

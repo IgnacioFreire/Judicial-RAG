@@ -128,6 +128,8 @@ uv run ruff check .
 uv run ruff format .
 ```
 
+GitHub Actions runs the same ruff checks and `pytest` on every push and pull request.
+
 ### Commits
 
 This project uses [Conventional Commits](https://www.conventionalcommits.org/). Use `commitizen` for guided commit messages:

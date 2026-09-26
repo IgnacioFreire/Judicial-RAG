@@ -11,7 +11,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from models.query import AgentAnswer, AnswerConfidence, DocumentAnswers, QuestionSchema
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class Stage(str, Enum):
+class Stage(StrEnum):
     """Pipeline stage emitted to the UI via the progress callback.
 
     Inherits from str so values serialise naturally in Streamlit widgets

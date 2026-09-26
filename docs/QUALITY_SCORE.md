@@ -21,5 +21,5 @@ Scale used on 2026-09-26. Update it when a change moves a grade.
 | `config/settings.py` | B | Validates the active provider and its key. Chunk size is not a setting |
 | `storage/` | B | Session and deletion are implemented. Timeout is measured from `created_at`, as the session spec requires. No tests |
 | `app/` | C | The full path is usable. No UI tests |
-| `docs/` | C | Written against the code on this date. No automatic freshness check (TD-14) |
-| Delivery | C | `Dockerfile` for Hugging Face Spaces (port 8501, `uv sync --no-group dev`). No CI workflow (TD-06) |
+| `docs/` | B | `tests/test_doc_links.py` checks relative links. Freshness is still updated in the same change as the code |
+| Delivery | B | GitHub Actions runs ruff and pytest on push and pull request |
