@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from app.components.uploader import store_uploads
 
 
@@ -24,8 +26,12 @@ def test_empty_batch_clears_the_directory(tmp_path: Path) -> None:
     assert list(tmp_path.iterdir()) == []
 
 
-def test_path_is_reduced_to_the_file_name(tmp_path: Path) -> None:
-    stored = store_uploads(tmp_path, [("..\\nested\\secret.pdf", b"x")])
+@pytest.mark.parametrize(
+    "raw_name",
+    ["..\\nested\\secret.pdf", "../nested/secret.pdf"],
+)
+def test_path_is_reduced_to_the_file_name(tmp_path: Path, raw_name: str) -> None:
+    stored = store_uploads(tmp_path, [(raw_name, b"x")])
     assert stored[0] == tmp_path / "secret.pdf"
     assert stored[0].read_bytes() == b"x"
     assert list(tmp_path.iterdir()) == [tmp_path / "secret.pdf"]

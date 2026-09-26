@@ -46,7 +46,7 @@ def store_uploads(pdf_dir: Path, files: list[tuple[str, bytes]]) -> list[Path]:
     keep: set[str] = set()
 
     for name, data in files:
-        safe_name = Path(name).name
+        safe_name = _file_name(name)
         if not safe_name or safe_name in {".", ".."}:
             logger.warning("Rejected upload with an unsafe name: %r", name)
             continue
@@ -63,6 +63,15 @@ def store_uploads(pdf_dir: Path, files: list[tuple[str, bytes]]) -> list[Path]:
             logger.info("Removed upload no longer in the batch: %s", existing.name)
 
     return paths
+
+
+def _file_name(name: str) -> str:
+    """Return the last path segment, on either separator.
+
+    ``Path.name`` treats ``\\`` as a separator only on Windows. A name such
+    as ``..\\nested\\secret.pdf`` would otherwise be stored verbatim on Linux.
+    """
+    return Path(name.replace("\\", "/")).name
 
 
 def render() -> list[Path]:
