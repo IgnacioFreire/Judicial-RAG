@@ -53,8 +53,8 @@ def search(
             distance    — cosine distance; lower means more similar.
     """
     logger.debug(
-        "Search: question=%r source=%s n=%d session=%s",
-        question[:80],
+        "Search: question_chars=%d source=%s n=%d session=%s",
+        len(question),
         source,
         n_results,
         session_id,

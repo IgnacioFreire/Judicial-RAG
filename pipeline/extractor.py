@@ -250,11 +250,11 @@ def _build_chunks(
         headings = list(docling_chunk.meta.headings or [])
 
         logger.debug(
-            "Chunk %d: page=%d headings=%s text_preview=%r",
+            "Chunk %d: page=%d heading_count=%d text_chars=%d",
             chunk_index,
             page,
-            headings,
-            text[:60],
+            len(headings),
+            len(text),
         )
 
         chunks.append(

@@ -15,7 +15,7 @@ Scale used on 2026-09-26. Update it when a change moves a grade.
 | `pipeline/embedder.py` | B | Tests with a mocked client (prefixes, isolation, upsert). The model name is still TD-01 |
 | `pipeline/vector_store.py` | C | Clear read path, filtered by `source`. No tests of its own |
 | `pipeline/extractor.py` | C | Real conversion and chunking. `tests/test_extractor.py` is empty. TD-02 |
-| `pipeline/rag_agent.py` | C | Four instructions and a `NOT_FOUND` fallback when JSON fails. `tests/test_rag_agent.py` is empty. TD-08, TD-09 |
+| `pipeline/rag_agent.py` | B | Four instructions, fenced-JSON recovery, and a `NOT_FOUND` fallback. Tests cover the format hint and parsing. Citation page is still the top chunk (TD-08) |
 | `pipeline/orchestrator.py` | B | Two phases, per-PDF and per-question failures contained. No tests |
 | `services/llm_client.py` | B | Four providers behind `call_llm`. No tests |
 | `config/settings.py` | C | Validates the active provider and its key. Nobody reads `CHUNK_*` (TD-02) and the embedding default disagrees with `.env.example` (TD-01) |

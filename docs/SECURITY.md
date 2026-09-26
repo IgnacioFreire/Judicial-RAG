@@ -8,15 +8,13 @@ Controls around keys, logs, and the deploy surface. Where uploads and the index 
 
 `.gitignore` excludes `.env`, `*.pdf`, and `.venv/`. It also excludes `chroma_db/`, a path the in-memory client does not write (TD-11).
 
-On Hugging Face Spaces, secrets belong in the Space configuration, not in the image. The `Dockerfile` does not copy a `.env`.
+On Hugging Face Spaces, secrets belong in the Space configuration, not in the image. `.dockerignore` excludes `.env` and `*.pdf` from the build context.
 
 ## Logs
 
 Allowed at INFO: filename, counts, `session_id`, question type, confidence, durations.
 
-Forbidden at every level: PDF body, full prompt, citation, a model response that contains case facts, keys.
-
-Current break: `_parse_response` logs 200 characters of the raw response when it is not JSON (TD-09). A fix removes that. Until then, do not add another log of the same kind.
+Forbidden at every level: PDF body, full prompt, citation, a model response that contains case facts, keys. Debug logs record lengths and counts, not the text.
 
 ## Docs, tests, and plans
 

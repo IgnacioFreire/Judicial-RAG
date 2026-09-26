@@ -95,7 +95,7 @@ def embed_query(text: str) -> list[float]:
     Returns:
         1024-dimensional float vector ready for ChromaDB similarity search.
     """
-    logger.debug("Embedding query: %r", text[:80])
+    logger.debug("Embedding query (%d chars)", len(text))
     return _to_vector(f"{_QUERY_PREFIX}{text}")
 
 
