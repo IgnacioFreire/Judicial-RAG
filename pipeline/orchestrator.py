@@ -77,7 +77,6 @@ async def run(
     schema: QuestionSchema,
     session_id: str,
     on_progress: OnProgress | None = None,
-    is_scanned: bool = False,
 ) -> list[DocumentAnswers]:
     """Run the full pipeline for a list of PDFs and a question schema.
 
@@ -97,7 +96,6 @@ async def run(
         schema:      User-defined question schema applied to every document.
         session_id:  User session identifier for vector store isolation.
         on_progress: Optional callback invoked on every progress event.
-        is_scanned:  Whether the PDFs require OCR for text extraction.
 
     Returns:
         One DocumentAnswers per PDF indexed in this run, each containing
@@ -124,7 +122,7 @@ async def run(
     )
 
     _drop_stale_sources(session_id, pdf_paths)
-    indexed = await _index_all(pdf_paths, session_id, is_scanned, on_progress)
+    indexed = await _index_all(pdf_paths, session_id, on_progress)
     results = _answer_all(sorted(set(indexed)), schema, session_id, on_progress)
 
     logger.info(
@@ -164,7 +162,6 @@ def _drop_stale_sources(session_id: str, pdf_paths: list[Path]) -> None:
 async def _index_all(
     pdf_paths: list[Path],
     session_id: str,
-    is_scanned: bool,
     on_progress: OnProgress | None,
 ) -> list[str]:
     """Extract and embed all PDFs concurrently via asyncio.gather.
@@ -175,7 +172,6 @@ async def _index_all(
     Args:
         pdf_paths:   PDFs to index.
         session_id:  User session identifier.
-        is_scanned:  Whether to enable OCR.
         on_progress: Progress callback.
 
     Returns:
@@ -184,7 +180,7 @@ async def _index_all(
     """
     total = len(pdf_paths)
     tasks = [
-        _index_one(path, session_id, is_scanned, on_progress, idx, total)
+        _index_one(path, session_id, on_progress, idx, total)
         for idx, path in enumerate(pdf_paths, start=1)
     ]
     outcomes = await asyncio.gather(*tasks, return_exceptions=True)
@@ -200,7 +196,6 @@ async def _index_all(
 async def _index_one(
     pdf_path: Path,
     session_id: str,
-    is_scanned: bool,
     on_progress: OnProgress | None,
     current: int,
     total: int,
@@ -213,7 +208,6 @@ async def _index_one(
     Args:
         pdf_path:    Absolute path to the PDF.
         session_id:  User session identifier.
-        is_scanned:  Whether to enable OCR.
         on_progress: Progress callback.
         current:     1-based index of this PDF in the batch.
         total:       Total number of PDFs in the batch.
@@ -237,7 +231,7 @@ async def _index_one(
             ),
         )
 
-        document = await extract(pdf_path, is_scanned=is_scanned)
+        document = await extract(pdf_path)
         logger.debug("Extracted %s: %d chunks", source, document.metadata.total_chunks)
         if document.metadata.total_chunks == 0:
             raise RuntimeError("produced no text")

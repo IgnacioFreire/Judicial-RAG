@@ -109,10 +109,9 @@ class TestChunk:
 
 
 class TestDocumentMetadata:
-    def test_ocr_defaults_to_false(self, metadata: DocumentMetadata) -> None:
-        # Most judicial PDFs are native digital — OCR should only be True
-        # when Docling explicitly detected a scanned document
-        assert metadata.ocr_applied is False
+    def test_requires_a_filename(self, metadata: DocumentMetadata) -> None:
+        assert metadata.filename
+        assert metadata.total_pages >= 1
 
     def test_zero_total_pages_raises(self) -> None:
         with pytest.raises(ValidationError):

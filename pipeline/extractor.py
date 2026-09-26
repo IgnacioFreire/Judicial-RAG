@@ -2,10 +2,10 @@
 extractor.py
 
 PDF content extraction using Docling and HybridChunker.
-Handles both native digital PDFs and scanned documents (OCR).
-Uses Docling's native document hierarchy to produce semantically
-coherent chunks with section headings as metadata, avoiding the
-need for regex-based section detection.
+Handles native digital PDFs. OCR is not used: a scanned PDF is not a
+supported input. Uses Docling's native document hierarchy to produce
+semantically coherent chunks with section headings as metadata, avoiding
+the need for regex-based section detection.
 """
 
 import asyncio
@@ -52,52 +52,38 @@ _tokenizer = HuggingFaceTokenizer(
 logger.debug("Chunking tokenizer loaded: bert-base-multilingual-cased (max_tokens=512)")
 
 
-def _make_pipeline_options(*, ocr: bool) -> PdfPipelineOptions:
+def _make_pipeline_options() -> PdfPipelineOptions:
     """Build Docling pipeline options with only the features we need.
 
-    Table structure analysis, page image generation and picture image
-    generation are disabled unconditionally — judicial PDFs rarely contain
-    tables worth parsing and we never use the rendered images. OCR is
-    controlled by the caller based on whether the user indicated the PDF
-    is a scanned document.
-
-    Args:
-        ocr: Whether to enable OCR for scanned PDFs.
+    Table structure analysis, page image generation, picture image
+    generation, and OCR are off. The product reads the digital text layer.
 
     Returns:
         Configured PdfPipelineOptions instance.
     """
     options = PdfPipelineOptions()
-    options.do_ocr = ocr
+    options.do_ocr = False
     options.do_table_structure = False
     options.generate_page_images = False
     options.generate_picture_images = False
     return options
 
 
-def _make_converter(*, ocr: bool) -> DocumentConverter:
+def _make_converter() -> DocumentConverter:
     """Build a DocumentConverter with minimal pipeline options.
-
-    Args:
-        ocr: Whether to enable OCR for scanned PDFs.
 
     Returns:
         Configured DocumentConverter instance.
     """
     return DocumentConverter(
         format_options={
-            InputFormat.PDF: PdfFormatOption(
-                pipeline_options=_make_pipeline_options(ocr=ocr)
-            )
+            InputFormat.PDF: PdfFormatOption(pipeline_options=_make_pipeline_options())
         }
     )
 
 
-# Two converters cover all cases: digital PDFs (fast) and scanned PDFs (OCR).
-# The caller selects between them based on the user-provided is_scanned flag.
-_digital_converter = _make_converter(ocr=False)
-_ocr_converter = _make_converter(ocr=True)
-logger.debug("Docling converters ready (digital + OCR)")
+_converter = _make_converter()
+logger.debug("Docling converter ready (digital, OCR off)")
 
 
 # ---------------------------------------------------------------------------
@@ -105,24 +91,22 @@ logger.debug("Docling converters ready (digital + OCR)")
 # ---------------------------------------------------------------------------
 
 
-async def extract(pdf_path: Path, is_scanned: bool = False) -> DocumentResult:
-    """Extract text and metadata from a PDF asynchronously.
+async def extract(pdf_path: Path) -> DocumentResult:
+    """Extract text and metadata from a digital PDF asynchronously.
 
     Offloads Docling's synchronous conversion to a thread pool so multiple
     PDFs can be processed concurrently without blocking the event loop.
+    OCR is not applied.
 
     Args:
         pdf_path: Absolute path to the PDF file.
-        is_scanned: Whether the user indicated this PDF is a scanned
-            document. When True, Docling uses OCR to extract text from
-            page images instead of the native text layer.
 
     Returns:
         DocumentResult with all chunks and document metadata.
     """
-    logger.info("Queuing extraction: %s (is_scanned=%s)", pdf_path.name, is_scanned)
+    logger.info("Queuing extraction: %s", pdf_path.name)
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, _extract_sync, pdf_path, is_scanned)
+    return await loop.run_in_executor(_executor, _extract_sync, pdf_path)
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +114,7 @@ async def extract(pdf_path: Path, is_scanned: bool = False) -> DocumentResult:
 # ---------------------------------------------------------------------------
 
 
-def _extract_sync(pdf_path: Path, is_scanned: bool) -> DocumentResult:
+def _extract_sync(pdf_path: Path) -> DocumentResult:
     """Run Docling extraction and chunking synchronously.
 
     Separated from the async wrapper so it can run in a thread
@@ -138,7 +122,6 @@ def _extract_sync(pdf_path: Path, is_scanned: bool) -> DocumentResult:
 
     Args:
         pdf_path: Absolute path to the PDF file.
-        is_scanned: Whether OCR should be applied during extraction.
 
     Returns:
         DocumentResult with all chunks and document metadata.
@@ -154,16 +137,11 @@ def _extract_sync(pdf_path: Path, is_scanned: bool) -> DocumentResult:
         logger.error("PDF not found: %s", pdf_path)
         raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
-    converter = _ocr_converter if is_scanned else _digital_converter
-    logger.debug(
-        "Using %s converter for %s",
-        "OCR" if is_scanned else "digital",
-        pdf_path.name,
-    )
+    logger.debug("Using digital converter for %s", pdf_path.name)
 
     try:
         t_convert = time.perf_counter()
-        result = converter.convert(str(pdf_path))
+        result = _converter.convert(str(pdf_path))
         logger.debug(
             "Docling conversion complete: %s (%.2fs)",
             pdf_path.name,
@@ -194,16 +172,13 @@ def _extract_sync(pdf_path: Path, is_scanned: bool) -> DocumentResult:
         filename=pdf_path.name,
         total_pages=max((c.page for c in chunks), default=1),
         total_chunks=len(chunks),
-        ocr_applied=is_scanned,
-        is_scanned=is_scanned,
     )
 
     logger.info(
-        "Extraction complete: %s — %d chunks, %d pages, ocr=%s (total %.2fs)",
+        "Extraction complete: %s — %d chunks, %d pages (total %.2fs)",
         pdf_path.name,
         metadata.total_chunks,
         metadata.total_pages,
-        metadata.ocr_applied,
         time.perf_counter() - t_start,
     )
 

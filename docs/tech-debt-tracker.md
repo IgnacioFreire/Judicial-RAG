@@ -6,7 +6,6 @@ This is not a product spec. Active plans live in [`plans/`](plans/README.md). Fi
 
 | Id | What happens | Where | Effect |
 |---|---|---|---|
-| TD-04 | The UI always calls `run(..., is_scanned=False)`. The OCR converter exists and nothing turns it on. Specified as current behavior in [`product-specs/document-upload.md`](product-specs/document-upload.md) | `app/main.py`, `pipeline/extractor.py` | A scanned PDF is treated as digital |
 | TD-05 | `tests/test_extractor.py` and `tests/test_rag_agent.py` contain no tests. `tests/fixtures/` exists and holds only `.gitkeep` | `tests/` | Extraction and the agent have no safety net |
 | TD-06 | There is no CI workflow. The automated check is pre-commit: ruff and commitizen | `.pre-commit-config.yaml` | A push can skip whatever the local hook did not run |
 | TD-07 | `QuestionSchema`'s docstring says the schema is persisted across sessions. It lives only in `st.session_state`. Specified as current behavior in [`product-specs/question-schema.md`](product-specs/question-schema.md) | `models/query.py`, `app/session_state.py` | Restarting the process, or losing Streamlit state, drops the questions |

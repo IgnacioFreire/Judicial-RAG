@@ -150,7 +150,6 @@ def _run_pipeline(pdf_paths: list[Path], schema: QuestionSchema) -> None:
                 schema=schema,
                 session_id=state.session_id(),
                 on_progress=on_progress,
-                is_scanned=False,
             )
         )
         state.set_results(results)

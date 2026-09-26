@@ -4,14 +4,9 @@ Used only in `pipeline/extractor.py`. User-visible consequences are specified in
 
 ## What is on
 
-Two `DocumentConverter` instances are built when the module is imported:
+One `DocumentConverter`, built when the module is imported, with `do_ocr=False`. Extraction reads the digital text layer. The upload spec does not ask the user whether a PDF is scanned.
 
-- Digital: `do_ocr=False`.
-- OCR: `do_ocr=True`.
-
-`extract(pdf_path, is_scanned=...)` picks one. Whether the user can choose OCR is a requirement in [`../product-specs/document-upload.md`](../product-specs/document-upload.md) (TD-04).
-
-Off in both: table structure, page images, picture images. Do not turn them on to "use more of Docling" without a change. The module comment says judicial PDFs are not processed that way, and the UI never uses images.
+Off: OCR, table structure, page images, picture images. Do not turn them on to "use more of Docling" without a change.
 
 ## How text is split
 
