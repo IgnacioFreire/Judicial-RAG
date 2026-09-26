@@ -14,7 +14,7 @@ Scale used on 2026-09-26. Update it when a change moves a grade.
 | `models/document.py`, `models/query.py` | A | Validation covered in `tests/test_document.py` and `tests/test_query.py` |
 | `pipeline/embedder.py` | B | Tests with a mocked client (prefixes, isolation, upsert, replacement) |
 | `pipeline/vector_store.py` | B | Search is filtered by `source`. Tests cover heading decoding |
-| `pipeline/extractor.py` | C | Real conversion and chunking. `tests/test_extractor.py` is empty |
+| `pipeline/extractor.py` | B | Chunk assembly is tested. Docling conversion itself is not |
 | `pipeline/rag_agent.py` | B | Four instructions, fenced-JSON recovery, and a `NOT_FOUND` fallback. Tests cover the format hint and parsing. Citation page is still the top chunk (TD-08) |
 | `pipeline/orchestrator.py` | B | Two phases, per-PDF and per-question failures contained. Tests cover which files a run answers |
 | `services/llm_client.py` | B | Four providers behind `call_llm`. No tests |
