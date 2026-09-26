@@ -11,8 +11,8 @@ Models:
     Category: a single option in a classification question.
     UserQuestion: a question or variable defined by the user, with its type,
         rules and categories if applicable.
-    QuestionSchema: the full set of questions defined by a user,
-        persisted and reused across sessions.
+    QuestionSchema: the full set of questions defined by a user for the
+        current UI session.
     Citation: the source fragment the agent used to build an answer.
     AgentAnswer: the full agent response for one question on one document.
     DocumentAnswers: all answers for a single document.
@@ -138,10 +138,10 @@ class UserQuestion(BaseModel):
 
 
 class QuestionSchema(BaseModel):
-    """Full set of questions defined by a user, persisted across sessions.
+    """Full set of questions defined by a user for the current UI session.
 
-    Serialised to JSON for storage and reuse. Designed to support
-    import from external files (Excel, JSON) in the future.
+    Kept in Streamlit session state only. It is not written to disk and
+    it is not restored in a new UI session.
 
     Attributes:
         name: Descriptive name.

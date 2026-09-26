@@ -11,7 +11,7 @@ Scale used on 2026-09-26. Update it when a change moves a grade.
 
 | Module | Grade | Why |
 |---|---|---|
-| `models/document.py`, `models/query.py` | A | Validation covered in `tests/test_document.py` and `tests/test_query.py`. The schema-persistence docstring is still wrong (TD-07) |
+| `models/document.py`, `models/query.py` | A | Validation covered in `tests/test_document.py` and `tests/test_query.py` |
 | `pipeline/embedder.py` | B | Tests with a mocked client (prefixes, isolation, upsert, replacement) |
 | `pipeline/vector_store.py` | C | Clear read path, filtered by `source`. No tests of its own |
 | `pipeline/extractor.py` | C | Real conversion and chunking. `tests/test_extractor.py` is empty |
