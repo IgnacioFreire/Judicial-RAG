@@ -6,7 +6,6 @@ This is not a product spec. Active plans live in [`plans/`](plans/README.md). Fi
 
 | Id | What happens | Where | Effect |
 |---|---|---|---|
-| TD-02 | `CHUNK_SIZE` and `CHUNK_OVERLAP` are validated in settings and never read. Chunking is `HybridChunker` with `bert-base-multilingual-cased` and `max_tokens=512` | `config/settings.py`, `pipeline/extractor.py` | Changing those environment variables does not change chunks |
 | TD-03 | Three modules are docstrings only: `config/prompts.py`, `services/ocr_service.py`, `services/parallel_runner.py`. Prompts live in `pipeline/rag_agent.py`. OCR is selected with `is_scanned` inside the extractor. Parallelism is the `ThreadPoolExecutor` in the extractor and the embedder | those three files | An agent that "completes" the empty module will duplicate logic that already lives elsewhere |
 | TD-04 | The UI always calls `run(..., is_scanned=False)`. The OCR converter exists and nothing turns it on. Specified as current behavior in [`product-specs/document-upload.md`](product-specs/document-upload.md) | `app/main.py`, `pipeline/extractor.py` | A scanned PDF is treated as digital |
 | TD-05 | `tests/test_extractor.py` and `tests/test_rag_agent.py` contain no tests. `tests/fixtures/` exists and holds only `.gitkeep` | `tests/` | Extraction and the agent have no safety net |

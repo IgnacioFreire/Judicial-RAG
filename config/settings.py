@@ -4,7 +4,7 @@ settings.py
 Application settings via Pydantic Settings.
 Reads all configuration from environment variables (or .env file).
 Single source of truth for LLM provider, model, parallelism limits,
-chunk sizes and session timeout.
+and session timeout.
 """
 
 from pydantic import Field, model_validator
@@ -46,12 +46,10 @@ class Settings(BaseSettings):
     # Embedding vector dimension — must match the model output
     # intfloat/multilingual-e5-large produces 1024-dimensional vectors
     embedding_dimensions: int = Field(default=1024, ge=1)
+
     # Pipeline
     # Keep max_parallel_pdfs low on memory-constrained environments
     max_parallel_pdfs: int = Field(default=4, ge=1, le=10)
-    # chunk_overlap is the number of characters repeated between consecutive chunks
-    chunk_size: int = Field(default=1000, ge=100, le=8000)
-    chunk_overlap: int = Field(default=200, ge=0)
 
     # Session
     # After this many minutes of inactivity
@@ -94,14 +92,6 @@ class Settings(BaseSettings):
         if self.embedding_provider == "huggingface" and not self.huggingface_api_key:
             raise ValueError(
                 "HUGGINGFACE_API_KEY is required when EMBEDDING_PROVIDER=huggingface"
-            )
-
-        # Overlap must be strictly smaller than chunk size,
-        # otherwise chunks would be entirely contained within the previous one
-        if self.chunk_overlap >= self.chunk_size:
-            raise ValueError(
-                f"CHUNK_OVERLAP ({self.chunk_overlap}) must be smaller "
-                f"than CHUNK_SIZE ({self.chunk_size})"
             )
 
         return self

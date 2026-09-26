@@ -19,7 +19,7 @@ Off in both: table structure, page images, picture images. Do not turn them on t
 
 Stored text is `chunker.contextualize()`, so the heading is inside the chunk. Headings are also stored on `Chunk.headings`. Empty chunks are skipped. The page comes from `meta.doc_items[0].prov[0].page_no`, and if that chain is missing, page 1.
 
-`CHUNK_SIZE` and `CHUNK_OVERLAP` in settings do not participate (TD-02).
+Chunk size is this tokenizer limit. There is no character `CHUNK_SIZE` setting.
 
 ## Thread
 
