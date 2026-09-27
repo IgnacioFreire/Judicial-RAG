@@ -215,6 +215,30 @@ def test_other_session_cannot_read_a_document() -> None:
     assert missing.status_code == 404
 
 
+def test_sign_out_starts_a_fresh_session(client: TestClient) -> None:
+    client.put("/api/uploads", files=[("files", ("a.pdf", b"a", "application/pdf"))])
+    old_cookie = client.cookies["jr_session"]
+    body = client.post("/api/sign-out")
+    assert body.status_code == 200
+    assert body.json()["signed_out"] is True
+    assert client.cookies["jr_session"] != old_cookie
+    session = client.get("/api/session").json()
+    assert session["accepted_files"] == []
+
+
+def test_session_key_override_is_not_returned(client: TestClient) -> None:
+    secret = "session-only-secret"
+    body = client.put(
+        "/api/profile/keys",
+        json={"deepseek_api_key": secret},
+    )
+    assert body.status_code == 200
+    assert secret not in body.text
+    profile = client.get("/api/profile").json()
+    assert profile["llm_key_configured"] is True
+    assert secret not in str(profile)
+
+
 def test_profile_does_not_return_the_key(client: TestClient) -> None:
     import config.settings as settings_mod
 

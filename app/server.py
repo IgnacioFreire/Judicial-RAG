@@ -21,6 +21,7 @@ from app.schema_drafts import QuestionDraft, SchemaBuildError, build_schema
 from app.ui_state import (
     UiState,
     close_run,
+    drop_ui,
     get_or_create_ui,
     mark_queued,
     note_progress,
@@ -32,9 +33,22 @@ from config.embeddings import EMBEDDING_TIERS
 from config.parsers import PARSER_TIERS
 from config.settings import settings
 from models.query import DocumentAnswers
+from pipeline.embedder import reset_inference_client
 from pipeline.orchestrator import ProgressEvent, Stage, run
-from services.llm_usage import bind, clear, totals, unbind
-from storage.cleanup import cleanup_expired_sessions
+from services.llm_usage import bind as bind_usage
+from services.llm_usage import clear, totals
+from services.llm_usage import unbind as unbind_usage
+from services.session_secrets import (
+    active_llm_key_configured,
+    huggingface_key_configured,
+)
+from services.session_secrets import (
+    bind as bind_secrets,
+)
+from services.session_secrets import (
+    unbind as unbind_secrets,
+)
+from storage.cleanup import cleanup_expired_sessions, cleanup_session
 from storage.session_manager import get_or_create_session
 from storage.uploads import MAX_BYTES, MAX_MB, file_name, store_uploads
 
@@ -110,6 +124,25 @@ class ProfileView(BaseModel):
     huggingface_key_configured: bool
     input_tokens: int
     output_tokens: int
+
+
+class KeysPatch(BaseModel):
+    anthropic_api_key: str | None = None
+    openai_api_key: str | None = None
+    gemini_api_key: str | None = None
+    deepseek_api_key: str | None = None
+    huggingface_api_key: str | None = None
+
+
+class KeysView(BaseModel):
+    llm_key_configured: bool
+    huggingface_key_configured: bool
+    llm_env_var: str
+    huggingface_env_var: str = "HUGGINGFACE_API_KEY"
+
+
+class SignOutView(BaseModel):
+    signed_out: bool = True
 
 
 class DocumentListItem(BaseModel):
@@ -245,14 +278,30 @@ def _row_item(row) -> DocumentListItem:
     )
 
 
-def _active_llm_key_set() -> bool:
-    keys = {
-        "anthropic": settings.anthropic_api_key,
-        "openai": settings.openai_api_key,
-        "gemini": settings.gemini_api_key,
-        "deepseek": settings.deepseek_api_key,
+def _llm_env_var() -> str:
+    names = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "gemini": "GEMINI_API_KEY",
+        "deepseek": "DEEPSEEK_API_KEY",
     }
-    return bool(keys.get(settings.llm_provider, ""))
+    return names[settings.llm_provider]
+
+
+def _profile_for(session_id: str, state: UiState) -> ProfileView:
+    overrides = state.key_overrides
+    input_tokens, output_tokens = totals(session_id)
+    return ProfileView(
+        email=settings.supabase_admin_email,
+        llm_provider=settings.llm_provider,
+        llm_model=settings.llm_model,
+        llm_key_configured=active_llm_key_configured(overrides),
+        embedding_provider=settings.embedding_provider,
+        embedding_model=settings.embedding_model,
+        huggingface_key_configured=huggingface_key_configured(overrides),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
 
 
 @app.get("/api/session")
@@ -392,7 +441,8 @@ async def post_run(request: Request) -> StreamingResponse:
         )
 
     async def work() -> None:
-        token = bind(session_id)
+        usage_token = bind_usage(session_id)
+        secrets_token = bind_secrets(state.key_overrides)
         try:
             results = await run(
                 pdf_paths=pdf_paths,
@@ -428,7 +478,8 @@ async def post_run(request: Request) -> StreamingResponse:
                 )
             )
         finally:
-            unbind(token)
+            unbind_secrets(secrets_token)
+            unbind_usage(usage_token)
             state.is_processing = False
 
     async def events() -> AsyncIterator[str]:
@@ -490,19 +541,62 @@ def get_document(name: str, request: Request) -> JSONResponse:
 @app.get("/api/profile")
 def get_profile(request: Request) -> JSONResponse:
     session_id, is_new = _bind(request)
-    input_tokens, output_tokens = totals(session_id)
-    profile = ProfileView(
-        email=settings.supabase_admin_email,
-        llm_provider=settings.llm_provider,
-        llm_model=settings.llm_model,
-        llm_key_configured=_active_llm_key_set(),
-        embedding_provider=settings.embedding_provider,
-        embedding_model=settings.embedding_model,
-        huggingface_key_configured=bool(settings.huggingface_api_key),
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
+    state = get_or_create_ui(session_id)
+    return _json(_profile_for(session_id, state), session_id, is_new)
+
+
+@app.get("/api/profile/keys")
+def get_profile_keys(request: Request) -> JSONResponse:
+    session_id, is_new = _bind(request)
+    state = get_or_create_ui(session_id)
+    overrides = state.key_overrides
+    view = KeysView(
+        llm_key_configured=active_llm_key_configured(overrides),
+        huggingface_key_configured=huggingface_key_configured(overrides),
+        llm_env_var=_llm_env_var(),
     )
-    return _json(profile, session_id, is_new)
+    return _json(view, session_id, is_new)
+
+
+@app.put("/api/profile/keys")
+def put_profile_keys(request: Request, body: KeysPatch) -> JSONResponse:
+    session_id, is_new = _bind(request)
+    state = get_or_create_ui(session_id)
+    if state.is_processing:
+        raise HTTPException(status_code=409, detail="A run is in progress.")
+    state.key_overrides.merge(body)
+    reset_inference_client()
+    overrides = state.key_overrides
+    view = KeysView(
+        llm_key_configured=active_llm_key_configured(overrides),
+        huggingface_key_configured=huggingface_key_configured(overrides),
+        llm_env_var=_llm_env_var(),
+    )
+    return _json(view, session_id, is_new)
+
+
+@app.post("/api/sign-out")
+def post_sign_out(request: Request) -> JSONResponse:
+    session_id = request.cookies.get(COOKIE)
+    if session_id:
+        state = get_or_create_ui(session_id)
+        if state.is_processing:
+            raise HTTPException(status_code=409, detail="A run is in progress.")
+        cleanup_session(session_id)
+        drop_ui(session_id)
+        clear(session_id)
+    new_id = str(uuid.uuid4())
+    get_or_create_session(new_id)
+    response = _json(SignOutView(), new_id, True)
+    response.delete_cookie(COOKIE, path="/")
+    response.set_cookie(
+        COOKIE,
+        new_id,
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+    return response
 
 
 def _json_list(rows: list[BaseModel], session_id: str, is_new: bool) -> JSONResponse:

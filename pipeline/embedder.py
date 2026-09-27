@@ -122,13 +122,21 @@ def delete_expired_index(cutoff: datetime) -> None:
     logger.debug("Expired index rows deleted up to %s", cutoff.isoformat())
 
 
+def reset_inference_client() -> None:
+    """Drop the cached HF client after session key overrides change."""
+    global _inference
+    _inference = None
+
+
 def _client() -> InferenceClient:
     """Build the Hugging Face client on first use."""
     global _inference
+    from services.session_secrets import huggingface_api_key
+
     if _inference is None:
         _inference = InferenceClient(
             provider="hf-inference",
-            api_key=settings.huggingface_api_key,
+            api_key=huggingface_api_key(),
         )
         logger.debug("HF InferenceClient initialised: %s", settings.embedding_model)
     return _inference
