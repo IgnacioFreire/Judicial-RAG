@@ -20,6 +20,11 @@ build/
 htmlcov/
 .pytest_cache/
 
+# Notebooks
+.ipynb_checkpoints/
+notebooks/inputs/*
+!notebooks/inputs/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db

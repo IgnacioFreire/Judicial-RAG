@@ -108,6 +108,8 @@ uv run streamlit run app/main.py
 
 The interface is at `http://localhost:8501`. What the screen does is specified in [`docs/product-specs/`](docs/product-specs/index.md).
 
+Manual notebooks: [`notebooks/README.md`](notebooks/README.md).
+
 ## Development
 
 ```bash

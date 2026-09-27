@@ -19,7 +19,7 @@ No file under `docs/product-specs/` changes. The notebooks call the public funct
 
 ## Dependency
 
-Add `jupyter` to the `dev` group in `pyproject.toml`. That is the only new dependency. Do not add pandas. Tables are plain text built in `notebooks/support.py`.
+Add `jupyter` to the `dev` group in `pyproject.toml`. That is the only new dependency. Do not add pandas. Tables are plain text built in `notebooks/helpers.py`.
 
 Launch with:
 
@@ -34,7 +34,7 @@ uv run jupyter lab notebooks
 
 Notebooks may show chunk text, answers, and citations on the operator's machine. That display is off unless the operator sets `SHOW_TEXT = True` in that notebook.
 
-Committed notebooks have empty outputs and a null execution count. `tests/test_notebooks.py` fails if a cell has an output. `.gitignore` ignores `.ipynb_checkpoints/` and everything under `notebooks/inputs/` except `.gitkeep`. PDFs stay out of git. Do not paste a ruling into a notebook cell, a fixture, or this plan.
+Committed notebooks have empty outputs and a null execution count. `.gitignore` ignores `.ipynb_checkpoints/` and everything under `notebooks/inputs/` except `.gitkeep`. PDFs stay out of git. Do not paste a ruling into a notebook cell, a fixture, or this plan.
 
 KPI rows store counts, filenames, durations, confidence, and answer source. They do not store answer text or citation text.
 
@@ -44,21 +44,22 @@ Chroma is in memory and dies with the kernel. Notebooks do not share an index. E
 
 Each notebook creates its own collection name, `nb-` plus a UUID, and deletes that collection in the last cell. It never uses another session's collection.
 
-## Shared module
+## Shared file
 
-`notebooks/support.py` is imported by the notebooks and tested without Docling, Chroma, or an API.
+`notebooks/helpers.py` is one small module imported by the notebooks. There is no `support.py` and no notebook test module.
 
 | Function | Does |
 |---|---|
-| `accepted_pdfs(directory)` | Lists `*.pdf` at or under 20 MB. Returns accepted paths and a rejection reason per other file (not a PDF, over 20 MB, empty name). |
+| `accepted_pdfs(directory)` | Lists `*.pdf` at or under 20 MB. Returns accepted paths and a rejection reason per other file (not a PDF, over 20 MB, empty name). Skips `.gitkeep`. |
 | `new_session_id()` | Returns `nb-<uuid>`. |
 | `timed(name)` | Context manager. Records the name and `time.perf_counter` duration in seconds. |
+| `preview(text, enabled)` | Returns a character count when `enabled` is false and the text when it is true. |
 | `result_rows(results)` | One dict per answer: document, label, question type, confidence, answer source, citation page, citation score, citation source, citation character count. Omits answer text and citation text. |
 | `answered_counts(results)` | Per document, the count of answers whose confidence is not `not_found`, and the total. Same rule as `app/components/results_viewer.py`. |
 | `phase_durations(events)` | From progress events stamped by the KPI notebook: phase 1 is the first `extracting` event until the first `answering` event; phase 2 is the first `answering` event until `complete`. Per question, the gap from that question's `answering` event to the next event. Phase 1 PDFs run concurrently, so this is wall time, not a sum of per-PDF times. |
 | `kpi_summary(results, failures, durations)` | Counts: PDFs indexed, PDFs failed, questions, answers, confidence histogram, direct, inferred, rows with a citation, not-found rate. Plus the durations above. |
 
-`SHOW_TEXT` lives in the notebook, not in `support.py`. A helper `preview(text, enabled)` returns a character count when `enabled` is false and the text when it is true. The operator opts in per notebook.
+`SHOW_TEXT` lives in the notebook. The operator opts in per notebook.
 
 ## Notebooks
 
@@ -151,40 +152,28 @@ Cells:
 
 | Path | Change |
 |---|---|
-| `notebooks/support.py` | New. Timing, PDF listing, result rows, KPI summary. |
+| `notebooks/helpers.py` | New. One small module for timing, PDF listing, result rows, and KPI summary. |
 | `notebooks/01_pdfs.ipynb` through `notebooks/07_kpis.ipynb` | New. One process each. Empty outputs. |
 | `notebooks/README.md` | How to point at a local PDF directory, what each notebook calls, kernel lifetime, and the rule against committing outputs. |
 | `notebooks/inputs/.gitkeep` | Empty input directory. |
-| `tests/test_notebook_support.py` | Pure tests for listing, rows, counts, and phase math. |
-| `tests/test_notebooks.py` | Committed notebooks have no outputs. |
 | `pyproject.toml` | `jupyter` in the dev group. |
 | `.gitignore` | Checkpoints and `notebooks/inputs/*` except `.gitkeep`. |
 | `README.md` | One line under the existing commands pointing at `notebooks/README.md`. |
 
-`pipeline/`, `models/`, `app/`, and `services/` stay untouched.
+`pipeline/`, `models/`, `app/`, `services/`, and `tests/` stay untouched. No `notebooks/support.py`.
 
 ## Tests
 
-Synthetic data only. No PDF bytes that look like a ruling, and no network.
-
-| Scenario | Test |
-|---|---|
-| A directory with one small PDF, one file over 20 MB, and one `.txt` | `accepted_pdfs` keeps the small PDF and names the two reasons. |
-| `timed("extract")` around a sleep of zero | The record's name is `extract` and its seconds are `>= 0`. |
-| One document, two answers, one `not_found`, one with a citation | `result_rows` has two rows, omits answer text, and `answered_counts` is 1 of 2. |
-| Stamped events: extracting, embedding, answering, answering, complete | `phase_durations` splits phase 1, phase 2, and one gap per answering event. |
-| Every `notebooks/*.ipynb` | Each code cell has `outputs == []` and `execution_count is None`. |
-
-`uv run pytest tests/test_notebook_support.py tests/test_notebooks.py` and `uv run ruff check notebooks/support.py tests/test_notebook_support.py tests/test_notebooks.py`.
+No new tests. The notebooks are a local harness, and this change does not add a test module for them or for `notebooks/helpers.py`.
 
 ## Order
 
 1. Add the gitignore rules and `notebooks/inputs/.gitkeep`.
 2. Add `jupyter` to the dev group and sync.
-3. Write `notebooks/support.py` and `tests/test_notebook_support.py`. Run those tests.
-4. Write the seven notebooks with empty outputs, then `tests/test_notebooks.py`.
+3. Write `notebooks/helpers.py`.
+4. Write the seven notebooks with empty outputs.
 5. Write `notebooks/README.md` and the one-line pointer in `README.md`.
-6. Run `uv run ruff check` on the new Python files and the two new tests.
+6. Run `uv run ruff check notebooks/helpers.py`.
 
 ## Close
 
