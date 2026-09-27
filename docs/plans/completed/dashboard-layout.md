@@ -11,7 +11,7 @@ The workspace screens should read as one dashboard: a full-height sidebar, one o
 
 ## Product spec
 
-Update [`product-specs/workspace.md`](../product-specs/workspace.md) so the overview shows the summary, run controls, a recent list, and links to upload and to the question editor.
+Update [`product-specs/workspace.md`](../../product-specs/workspace.md) so the overview shows the summary, run controls, a recent list, and links to upload and to the question editor.
 
 ## Modules
 

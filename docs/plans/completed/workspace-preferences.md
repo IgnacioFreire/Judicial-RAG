@@ -12,7 +12,7 @@ Users need light and dark themes, English and Spanish UI copy, contextual help, 
 
 ## Product spec
 
-Update [`product-specs/workspace.md`](../product-specs/workspace.md) with theme, locale, help, sign-out, and session keys.
+Update [`product-specs/workspace.md`](../../product-specs/workspace.md) with theme, locale, help, sign-out, and session keys.
 
 ## Modules
 
