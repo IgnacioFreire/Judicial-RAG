@@ -1,10 +1,13 @@
 """Small helpers shared by the manual notebooks."""
 
+import os
 import time
 import uuid
 from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path
+
+from supabase import create_client
 
 from models.query import AnswerConfidence
 
@@ -50,6 +53,59 @@ def classify_uploads(
         else:
             accepted.append((name, size))
     return accepted, rejected
+
+
+def download_supabase_pdfs(
+    directory: Path,
+) -> tuple[str, list[Path], list[tuple[str, int, str]]]:
+    """Sign in and save accepted bucket PDFs into directory."""
+    required = [
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_ADMIN_EMAIL",
+        "SUPABASE_ADMIN_PASSWORD",
+    ]
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        raise RuntimeError("Missing Supabase settings: " + ", ".join(missing))
+
+    bucket = os.environ.get("SUPABASE_PDF_BUCKET", "pdfs")
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"])
+    client.auth.sign_in_with_password(
+        {
+            "email": os.environ["SUPABASE_ADMIN_EMAIL"],
+            "password": os.environ["SUPABASE_ADMIN_PASSWORD"],
+        }
+    )
+    accepted, rejected = classify_uploads(_list_bucket(client, bucket))
+    paths: list[Path] = []
+    for name, size in accepted:
+        if name != Path(name).name:
+            rejected.append((name, size, "nested path"))
+            continue
+        target = directory / name
+        target.write_bytes(client.storage.from_(bucket).download(name))
+        paths.append(target)
+    return bucket, paths, rejected
+
+
+def _list_bucket(client, bucket: str) -> list[tuple[str, int]]:
+    rows: list[tuple[str, int]] = []
+    offset = 0
+    while True:
+        page = client.storage.from_(bucket).list(
+            "",
+            {"limit": 100, "offset": offset},
+        )
+        for item in page:
+            metadata = item.get("metadata") or None
+            if not metadata:
+                continue
+            size = metadata.get("size", metadata.get("contentLength", 0)) or 0
+            rows.append((item.get("name") or "", int(size)))
+        if len(page) < 100:
+            return rows
+        offset += 100
 
 
 def new_session_id() -> str:

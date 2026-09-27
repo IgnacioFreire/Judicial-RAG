@@ -19,7 +19,7 @@ No file under `docs/product-specs/` changes. The notebooks call the public funct
 
 ## Dependency
 
-Add `jupyter` and `supabase` to the `dev` group in `pyproject.toml`. Do not add pandas. Tables are plain text built in `notebooks/helpers.py`. The Supabase client is used by `notebooks/01_pdfs.ipynb` only.
+Add `jupyter` and `supabase` to the `dev` group in `pyproject.toml`. Do not add pandas. Tables are plain text built in `notebooks/helpers.py`. The Supabase client is used by `notebooks/01_pdfs.ipynb` and `notebooks/02_extraction.ipynb`.
 
 Launch with:
 
@@ -34,7 +34,7 @@ uv run jupyter lab notebooks
 
 Notebooks may show chunk text, answers, and citations on the operator's machine. That display is off unless the operator sets `SHOW_TEXT = True` in that notebook.
 
-`notebooks/01_pdfs.ipynb` signs in to Supabase as the admin test user and reads the private `pdfs` bucket. Credentials stay in `.env`. The notebook prints names, sizes, and byte counts. It does not print PDF text and it does not write the files into the repo.
+`notebooks/01_pdfs.ipynb` and `notebooks/02_extraction.ipynb` sign in to Supabase as the admin test user and read the private `pdfs` bucket. Credentials stay in `.env`. The PDF notebook prints names, sizes, and byte counts. The extraction notebook downloads accepted PDFs into a temporary directory because `extract` needs a path, then deletes those files in its last cell. Neither notebook prints PDF text unless the operator sets `SHOW_TEXT` in the extraction notebook, and neither writes the files into the repo.
 
 Committed notebooks have empty outputs and a null execution count. `.gitignore` ignores `.ipynb_checkpoints/` and everything under `notebooks/inputs/` except `.gitkeep`. PDFs stay out of git. Do not paste a ruling into a notebook cell, a fixture, or this plan.
 
@@ -54,6 +54,7 @@ Each notebook creates its own collection name, `nb-` plus a UUID, and deletes th
 |---|---|
 | `accepted_pdfs(directory)` | Lists `*.pdf` at or under 20 MB. Returns accepted paths and a rejection reason per other file (not a PDF, over 20 MB, empty name). Skips `.gitkeep`. |
 | `classify_uploads(files)` | Same 20 MB rule for objects already listed from Supabase: name and size in bytes. |
+| `download_supabase_pdfs(directory)` | Signs in with the admin test account, saves each accepted bucket PDF into `directory`, and returns the bucket name, those paths, and the rejections. |
 | `new_session_id()` | Returns `nb-<uuid>`. |
 | `timed(name)` | Context manager. Records the name and `time.perf_counter` duration in seconds. |
 | `preview(text, enabled)` | Returns a character count when `enabled` is false and the text when it is true. |
@@ -66,7 +67,7 @@ Each notebook creates its own collection name, `nb-` plus a UUID, and deletes th
 
 ## Notebooks
 
-Notebooks `02` through `07` still read local files from `NOTEBOOK_PDF_DIR`, or from `notebooks/inputs/` when that variable is unset. The operator puts local PDFs there. The question cell is a template: one `UserQuestion` of type `extraction` with a generic label and instruction. The operator replaces it before running retrieval, the agent, results, or KPIs. The template is not a legal rule.
+`02_extraction.ipynb` reads the same private bucket as `01_pdfs.ipynb`. Notebooks `03` through `07` still read local files from `NOTEBOOK_PDF_DIR`, or from `notebooks/inputs/` when that variable is unset. The operator puts local PDFs there. The question cell is a template: one `UserQuestion` of type `extraction` with a generic label and instruction. The operator replaces it before running retrieval, the agent, results, or KPIs. The template is not a legal rule.
 
 ### `notebooks/01_pdfs.ipynb`
 
@@ -79,20 +80,21 @@ Cells:
 3. Print the accepted count, the rejected count, and the duration of the listing.
 4. Download each accepted object into memory and print its name and byte count.
 
-No Docling. The bytes are discarded after the count. Later notebooks do not see this bucket yet.
+No Docling. The bytes are discarded after the count. `02_extraction.ipynb` reads the same bucket. Notebooks `03` through `07` do not.
 
 ### `notebooks/02_extraction.ipynb`
 
-Process: `pipeline.extractor.extract` on each accepted PDF.
+Process: `pipeline.extractor.extract` on each accepted PDF from the private bucket.
 
 Cells:
 
-1. Setup: `accepted_pdfs`. Time this separately.
+1. Setup: `download_supabase_pdfs` into a temporary directory. Time this separately.
 2. For each path, `await extract(path)` inside `timed("extract")`.
 3. Print filename, `total_pages`, `total_chunks`, heading count, and min, median, and max characters per chunk.
 4. Optional: with `SHOW_TEXT`, print one chunk's page, headings, and text.
+5. Delete the temporary directory.
 
-A PDF that raises is printed as a failure with the exception type and message, and the loop continues. A PDF with zero chunks is printed as a failure, matching the orchestrator's "produced no text" rule. This notebook does not embed.
+A PDF that raises is printed as a failure with the exception type and message, and the loop continues. A PDF with zero chunks is printed as a failure, matching the orchestrator's "produced no text" rule. The last cell deletes the temporary directory. This notebook does not embed.
 
 ### `notebooks/03_embedding.ipynb`
 

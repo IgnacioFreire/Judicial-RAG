@@ -21,6 +21,7 @@ No file under `docs/product-specs/` changes in this slice. The running app still
 |---|---|
 | `docs/design-docs/supabase.md` | The store decision. |
 | `notebooks/01_pdfs.ipynb` | Sign in and read the `pdfs` bucket. Empty outputs. |
+| `notebooks/02_extraction.ipynb` | Download accepted PDFs and run `extract`. Empty outputs. |
 | `notebooks/helpers.py` | `classify_uploads` for name and size. |
 | `.env.example` | Placeholders for the admin test account. |
 | `pyproject.toml` | `supabase` in the dev group. |
