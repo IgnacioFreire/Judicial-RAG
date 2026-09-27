@@ -1,24 +1,34 @@
 # Notebooks
 
-Local harness for one pipeline stage at a time. Launch from the repo root:
+Start here to try the pipeline one stage at a time. These notebooks are a local harness. They are not the Streamlit app, and this folder has no automated test suite. You check a notebook by running it and reading what it prints.
+
+## Before you run anything
+
+From the repo root:
 
 ```bash
 uv sync --group dev
+cp .env.example .env
 uv run jupyter lab notebooks
 ```
 
-Each notebook that embeds creates its own in-memory Chroma collection and deletes it in the last cell. Do not commit notebook outputs. PDFs stay out of git.
+On Windows, copy `.env.example` to `.env` yourself. Fill in `.env` and do not commit it.
+
+Open one notebook and use its kernel only for that file. Run the cells from top to bottom. Restart the kernel before you open the next notebook. Each notebook that embeds builds its own in-memory index and deletes that index in the last cell.
+
+Do not commit notebook outputs, `.ipynb_checkpoints/`, or PDFs.
+
+`SHOW_TEXT` starts as `False`. Set it to `True` in a notebook only when you want chunk text, answers, or citations on this machine. The printed tables still omit that text.
 
 ## Admin test account
 
-`01_pdfs.ipynb` signs in to your own Supabase project and reads the private bucket `pdfs`. The email and password belong to the person who runs the notebook. They stay in `.env` on that machine. `.gitignore` already excludes `.env`, so a clone does not receive someone else's account.
+`01_pdfs.ipynb` signs in to your own Supabase project and reads the private bucket `pdfs`. The email and password belong to the person who runs the notebook. They stay in `.env`. A clone does not receive someone else's account.
 
-1. Copy `.env.example` to `.env` in the repo root. Do not commit `.env`.
-2. In the Supabase dashboard, open Authentication and add one user. Use your email and a password you choose.
-3. In `.env`, set `SUPABASE_ADMIN_EMAIL` to that email and `SUPABASE_ADMIN_PASSWORD` to that password.
-4. In Project Settings → API, copy the project URL into `SUPABASE_URL` and the anon key into `SUPABASE_ANON_KEY`. Leave the service role key out of `.env`.
-5. Create a private bucket named `pdfs`. Leave `SUPABASE_PDF_BUCKET=pdfs` unless you chose another name.
-6. Open the SQL editor and create the read policy below. Where the statement mentions the email, paste the same address you put in `SUPABASE_ADMIN_EMAIL`. Run it in the dashboard. Do not copy that address back into a file in the git repository.
+1. In the Supabase dashboard, open Authentication and add one user. Use your email and a password you choose.
+2. In `.env`, set `SUPABASE_ADMIN_EMAIL` to that email and `SUPABASE_ADMIN_PASSWORD` to that password.
+3. In Project Settings → API, copy the project URL into `SUPABASE_URL` and the anon key into `SUPABASE_ANON_KEY`. Leave the service role key out of `.env`.
+4. Create a private bucket named `pdfs`. Leave `SUPABASE_PDF_BUCKET=pdfs` unless you chose another name.
+5. Open the SQL editor and run the policy below. Where the statement mentions the email, paste the same address you put in `SUPABASE_ADMIN_EMAIL`. Do that in the dashboard only. Do not copy that address into a file in the git repository.
 
 ```sql
 create policy "admin test user reads pdfs"
@@ -30,11 +40,27 @@ using (
 );
 ```
 
-7. Upload PDFs from the Storage page in the dashboard.
-8. Restart the notebook kernel and run `01_pdfs.ipynb`.
+6. Upload PDFs from the Storage page in the dashboard.
+7. Restart the kernel and run `01_pdfs.ipynb`.
 
-The notebook prints names, sizes, and byte counts. It does not print PDF text.
+A good run prints the bucket name, one row per object with `accepted` or `rejected: ...`, then `accepted`, `rejected`, and `list` seconds. The last cell prints a byte count for each accepted file and does not print the PDF text. A rejected row names the reason: not a PDF, over 20 MB, or an empty name.
 
-Notebooks `02` through `07` still open local files from `NOTEBOOK_PDF_DIR`, or from `notebooks/inputs/` when that variable is unset.
+## Local PDFs for the later notebooks
 
-`SHOW_TEXT` defaults to false. Turn it on in a notebook to print chunk text, answers, or citations on this machine.
+Notebooks `02` through `07` do not read Supabase. Put PDFs in `notebooks/inputs/`, or set `NOTEBOOK_PDF_DIR` to another directory. Those calls need the LLM key and `HUGGINGFACE_API_KEY` in `.env`. Extraction downloads Docling models on first use.
+
+The question cells are templates. Replace the label and the instruction with your own question before you run retrieval, the agent, results, or KPIs. The template is not a legal rule.
+
+## What to look for
+
+| Notebook | You are checking | A good run shows |
+|---|---|---|
+| `01_pdfs.ipynb` | Sign-in and the private bucket | Accepted and rejected rows, then byte counts. No Docling. |
+| `02_extraction.ipynb` | `extract` on each local PDF | Filename, pages, chunks, heading count, and min, median, and max characters. A failure prints the exception type and continues. A PDF with no chunks is a failure. |
+| `03_embedding.ipynb` | `embed_document` | Filename, chunk count, indexed sources, and embed seconds. The last cell deletes the collection. |
+| `04_retrieval.ipynb` | `search` for one question and one file | Rank, page, headings, distance, and character count. Default `n_results` is 5. The last cell deletes the collection. |
+| `05_agent.ipynb` | `answer_question` for one question and one file | Label, question type, confidence, answer source, citation page, citation score, citation character count, and seconds. The last cell deletes the collection. |
+| `06_results.ipynb` | The same columns the UI shows | The first code cell uses an in-memory sample and needs no quota. Later cells answer your questions, then print `result_rows` and `answered_counts` with the mapping time on its own. The last cell deletes the collection. |
+| `07_kpis.ipynb` | One full `run` | Phase times, `kpi_summary`, `answered_counts`, and `result_rows`. The last cell deletes the collection. |
+
+Run `06_results.ipynb` through the sample cell first when you want to check the mapping without calling an API.
