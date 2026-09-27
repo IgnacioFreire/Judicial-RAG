@@ -87,7 +87,7 @@ The exception is a Chroma hit: `pipeline/vector_store.search` returns `list[dict
 
 ## State that is not in the repo
 
-Chroma uses an in-memory `chromadb.Client()`. The index dies with the process. PDFs live in a `tempfile.TemporaryDirectory` per session (`storage/session_manager.py`) and are removed when the session is cleaned up or the process exits. There is no database and no SQL schema. That is why `docs/generated/` has nothing to dump.
+The decided store for users, sessions, PDF bytes, and the vector index is one Supabase project ([`design-docs/supabase.md`](design-docs/supabase.md)). The running Streamlit app has not moved there yet. Chroma still uses an in-memory `chromadb.Client()`, and the app still keeps PDFs in a `tempfile.TemporaryDirectory` per session (`storage/session_manager.py`) until that process exits or the session is cleaned up. There is no SQL schema in this repo. That is why `docs/generated/` has nothing to dump. Notebook `01_pdfs.ipynb` already reads the private `pdfs` bucket as the admin test user.
 
 ## UI
 

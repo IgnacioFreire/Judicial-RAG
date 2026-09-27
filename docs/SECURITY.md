@@ -24,4 +24,4 @@ Do not paste real rulings. A fixture, if one is ever added, is synthetic or anon
 
 The app listens on port 8501 inside the container, on `0.0.0.0`. The code has no authentication. Anyone who can open the Space can upload a PDF to that instance. Isolation is between sessions of the same process, not an authenticated user boundary.
 
-Do not add an endpoint, a webhook, or an external PDF store without a plan and a human confirmation.
+Do not add an endpoint, a webhook, or an external PDF store without a plan and a human confirmation. The PDF notebook is the confirmed exception: it signs in to Supabase with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_ADMIN_EMAIL`, and `SUPABASE_ADMIN_PASSWORD` from `.env`. That account is the maintainer's admin test user. The notebook does not use the service role key. Do not commit these values. The Streamlit app still has no authentication and no external store.

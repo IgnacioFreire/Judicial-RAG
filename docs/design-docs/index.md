@@ -18,6 +18,7 @@ Observable behavior is not duplicated here. It lives in [`../product-specs/`](..
 | [`../SECURITY.md`](../SECURITY.md) | Secrets, PDFs, logs | Compared with `.gitignore`, `settings.py`, `session_manager.py`, `rag_agent.py` |
 | [`../QUALITY_SCORE.md`](../QUALITY_SCORE.md) | Grade per module | Assigned from the code and `tests/` on 2026-09-26 |
 | [`../tech-debt-tracker.md`](../tech-debt-tracker.md) | Open drift, not a plan | Each row names a file |
-| [`../plans/README.md`](../plans/README.md) | How a change is planned. Finished plans sit in `plans/completed/` | [`../plans/manual-notebooks.md`](../plans/manual-notebooks.md) is in progress |
+| [`supabase.md`](supabase.md) | Where users, sessions, PDFs, and the index will live | Decision confirmed 2026-09-27. The Streamlit app still uses a temp directory |
+| [`../plans/README.md`](../plans/README.md) | How a change is planned. Finished plans sit in `plans/completed/` | [`../plans/manual-notebooks.md`](../plans/manual-notebooks.md) and [`../plans/supabase-storage.md`](../plans/supabase-storage.md) are in progress |
 
 Nothing checks that a doc was re-read after a code change. Relative links in `docs/`, `AGENTS.md`, and `README.md` are checked by `tests/test_doc_links.py`. When a change alters behavior a doc describes, update the product spec in the same change. If you cannot update it yet, add a row to the tracker.

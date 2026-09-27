@@ -19,7 +19,7 @@ No file under `docs/product-specs/` changes. The notebooks call the public funct
 
 ## Dependency
 
-Add `jupyter` to the `dev` group in `pyproject.toml`. That is the only new dependency. Do not add pandas. Tables are plain text built in `notebooks/helpers.py`.
+Add `jupyter` and `supabase` to the `dev` group in `pyproject.toml`. Do not add pandas. Tables are plain text built in `notebooks/helpers.py`. The Supabase client is used by `notebooks/01_pdfs.ipynb` only.
 
 Launch with:
 
@@ -33,6 +33,8 @@ uv run jupyter lab notebooks
 ## Privacy
 
 Notebooks may show chunk text, answers, and citations on the operator's machine. That display is off unless the operator sets `SHOW_TEXT = True` in that notebook.
+
+`notebooks/01_pdfs.ipynb` signs in to Supabase as the admin test user and reads the private `pdfs` bucket. Credentials stay in `.env`. The notebook prints names, sizes, and byte counts. It does not print PDF text and it does not write the files into the repo.
 
 Committed notebooks have empty outputs and a null execution count. `.gitignore` ignores `.ipynb_checkpoints/` and everything under `notebooks/inputs/` except `.gitkeep`. PDFs stay out of git. Do not paste a ruling into a notebook cell, a fixture, or this plan.
 
@@ -51,6 +53,7 @@ Each notebook creates its own collection name, `nb-` plus a UUID, and deletes th
 | Function | Does |
 |---|---|
 | `accepted_pdfs(directory)` | Lists `*.pdf` at or under 20 MB. Returns accepted paths and a rejection reason per other file (not a PDF, over 20 MB, empty name). Skips `.gitkeep`. |
+| `classify_uploads(files)` | Same 20 MB rule for objects already listed from Supabase: name and size in bytes. |
 | `new_session_id()` | Returns `nb-<uuid>`. |
 | `timed(name)` | Context manager. Records the name and `time.perf_counter` duration in seconds. |
 | `preview(text, enabled)` | Returns a character count when `enabled` is false and the text when it is true. |
@@ -63,19 +66,20 @@ Each notebook creates its own collection name, `nb-` plus a UUID, and deletes th
 
 ## Notebooks
 
-Inputs are read from `NOTEBOOK_PDF_DIR`, or from `notebooks/inputs/` when that variable is unset. The operator puts local PDFs there. The question cell is a template: one `UserQuestion` of type `extraction` with a generic label and instruction. The operator replaces it before running retrieval, the agent, results, or KPIs. The template is not a legal rule.
+Notebooks `02` through `07` still read local files from `NOTEBOOK_PDF_DIR`, or from `notebooks/inputs/` when that variable is unset. The operator puts local PDFs there. The question cell is a template: one `UserQuestion` of type `extraction` with a generic label and instruction. The operator replaces it before running retrieval, the agent, results, or KPIs. The template is not a legal rule.
 
 ### `notebooks/01_pdfs.ipynb`
 
-Process: choose the files a later notebook will open.
+Process: sign in as the admin test user and read PDFs from the private Supabase bucket.
 
 Cells:
 
-1. Resolve the input directory and call `accepted_pdfs`.
-2. Print each file's name, size in MB, and accepted or rejected.
+1. Load `.env`, sign in, list the bucket, and call `classify_uploads`.
+2. Print each object's name, size in MB, and accepted or rejected.
 3. Print the accepted count, the rejected count, and the duration of the listing.
+4. Download each accepted object into memory and print its name and byte count.
 
-No network. No Docling.
+No Docling. The bytes are discarded after the count. Later notebooks do not see this bucket yet.
 
 ### `notebooks/02_extraction.ipynb`
 
