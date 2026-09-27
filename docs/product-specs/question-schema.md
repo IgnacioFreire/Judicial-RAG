@@ -49,7 +49,7 @@ A question MAY include an output-format hint and extra notes. When notes are pre
 - **AND** a question without an output format does not receive that hint
 
 ### Requirement: Schema lifetime
-The system SHALL keep the saved schema in the current UI session only. It MUST NOT write the schema to disk.
+Drafts MAY live only in the browser until save. The saved schema MUST live on the server session. It MUST NOT be written to disk or to `localStorage`.
 
 #### Scenario: Reset
 - **WHEN** the user resets outside a running pipeline

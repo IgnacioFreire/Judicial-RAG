@@ -12,8 +12,8 @@ Observable behavior is not duplicated here. It lives in [`../product-specs/`](..
 | [`../PRODUCT_SENSE.md`](../PRODUCT_SENSE.md) | Who the product is for, and what it is not | Compared with `README.md` and the flow in `app/main.py` |
 | [`../product-specs/index.md`](../product-specs/index.md) | Behavior a user can rely on | Compared with the pipeline, the question form, the uploader, session cleanup, and Advanced settings on 2026-09-27 |
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Module map and dependencies | Compared with imports in the tree |
-| [`../DESIGN.md`](../DESIGN.md) | Layout and copy. Behavior is in the product specs | Compared with the three components under `app/components/` |
-| [`../FRONTEND.md`](../FRONTEND.md) | Where each UI piece and state key lives | Compared with `app/` |
+| [`../DESIGN.md`](../DESIGN.md) | Layout and copy. Behavior is in the product specs | Compared with `web/src/components/` on 2026-09-27 |
+| [`../FRONTEND.md`](../FRONTEND.md) | Where each UI piece and state key lives | Compared with `app/server.py` and `web/` |
 | [`../RELIABILITY.md`](../RELIABILITY.md) | Failure isolation and limits | Compared with the orchestrator, uploader, cleanup, and settings |
 | [`../SECURITY.md`](../SECURITY.md) | Secrets, PDFs, logs | Compared with `.gitignore`, `settings.py`, `session_manager.py`, `rag_agent.py` |
 | [`../QUALITY_SCORE.md`](../QUALITY_SCORE.md) | Grade per module | Assigned from the code and `tests/` on 2026-09-27 |

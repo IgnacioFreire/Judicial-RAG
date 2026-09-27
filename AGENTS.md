@@ -37,7 +37,8 @@ Detail is in [`docs/plans/README.md`](docs/plans/README.md).
 
 ```bash
 uv sync --group dev
-uv run streamlit run app/main.py
+uv run python -m app
+cd web && npm install && npm run dev
 uv run pytest
 uv run pytest --cov=pipeline --cov-report=term-missing
 uv run ruff check .

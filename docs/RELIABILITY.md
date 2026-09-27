@@ -18,7 +18,7 @@ Phase 1 runs per PDF, capped by `MAX_PARALLEL_PDFS` (default 4, minimum 1, maxim
 
 ## Session clock
 
-`SESSION_TIMEOUT_MINUTES` is an integer from 5 to 1440. The default and the fact that the clock starts at creation are requirements in [`product-specs/session.md`](product-specs/session.md). `cleanup_expired_sessions` runs at the start of each Streamlit rerun. It deletes tracked sessions from their creation time, then deletes index rows first stored before that same timeout. A failed index sweep is logged and the page still loads. `tempfile.TemporaryDirectory` removes the upload directory when the process exits. The index rows do not.
+`SESSION_TIMEOUT_MINUTES` is an integer from 5 to 1440. The default and the fact that the clock starts at creation are requirements in [`product-specs/session.md`](product-specs/session.md). `cleanup_expired_sessions` runs at the start of each `GET /api/session`. It deletes tracked sessions from their creation time, then deletes index rows first stored before that same timeout. A failed index sweep is logged and the page still loads. `tempfile.TemporaryDirectory` removes the upload directory when the process exits. The index rows do not.
 
 ## Model budget
 

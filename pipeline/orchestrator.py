@@ -33,8 +33,7 @@ logger = logging.getLogger(__name__)
 class Stage(StrEnum):
     """Pipeline stage emitted to the UI via the progress callback.
 
-    Inherits from str so values serialise naturally in Streamlit widgets
-    without an explicit .value call.
+    Inherits from str so values serialise in JSON without an extra .value call.
     """
 
     EXTRACTING = "extracting"

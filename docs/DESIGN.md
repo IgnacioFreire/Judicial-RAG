@@ -2,20 +2,17 @@
 
 Layout and copy only. Upload, save, run, reset, and results behave as specified in [`product-specs/`](product-specs/index.md). Do not restate those rules here.
 
-One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify variables from judicial PDF documents."
+One wide dashboard screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify variables from judicial PDF documents."
+
+The shell follows a finance-dashboard layout (dark workspace sidebar, light overview, metric cards). It is still a single page: no extra routes.
 
 ```
-┌ sidebar ───────────────┬ body ───────────────────────────┐
-│ Upload documents       │ Run pipeline          Reset     │
-│ [PDF, multiple]        │ progress / error / success      │
-│ Define questions       │ Results                         │
-│ editors + categories   │ one expander per PDF            │
-│ Add question           │                                 │
-│ Save schema            │                                 │
-│ Advanced settings      │                                 │
-│ Parser                 │                                 │
-│ Chunking               │                                 │
-│ Retrieval              │                                 │
+┌ dark sidebar ──────────┬ light body ─────────────────────┐
+│ brand                  │ Overview + caption              │
+│ Upload documents       │ metric cards                    │
+│ Define questions       │ Run pipeline          Reset     │
+│ Advanced settings      │ progress / error / success      │
+│                        │ Results                         │
 └────────────────────────┴─────────────────────────────────┘
 ```
 
@@ -46,7 +43,7 @@ One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify var
 
 Confidence badges: `high` green, `medium` orange, `low` red, `not_found` gray.
 
-Visible strings are English. A copy change is its own plan and touches the components under `app/components/` and `app/main.py` together.
+Visible strings are English. A copy change is its own plan and touches the components under `web/src/components/` together.
 
 ## Editor fields
 
