@@ -11,7 +11,7 @@ Agent map: [`AGENTS.md`](AGENTS.md). Current behavior: [`docs/product-specs/`](d
 | UI | Streamlit |
 | PDF extraction | Docling |
 | Embeddings | Hugging Face Inference API |
-| Vector store | ChromaDB (in memory, per session) |
+| Vector store | Supabase pgvector (per session) |
 | LLM | DeepSeek, Anthropic, OpenAI, or Gemini |
 | Orchestration | `pipeline/orchestrator.py` |
 | Validation | Pydantic v2 |

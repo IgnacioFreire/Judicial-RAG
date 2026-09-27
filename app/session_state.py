@@ -12,6 +12,7 @@ import uuid
 import streamlit as st
 
 from config.chunkers import DEFAULT_CHUNK_TIER
+from config.embeddings import DEFAULT_EMBEDDING_TIER
 from config.parsers import DEFAULT_PARSER_TIER
 from models.query import QuestionSchema
 from storage.session_manager import get_or_create_session
@@ -30,6 +31,7 @@ _UPLOADED_FILES = "uploaded_files"
 _RUN_ERRORS = "run_errors"
 _PARSER_TIER = "parser_tier"
 _CHUNK_TIER = "chunk_tier"
+_EMBEDDING_TIER = "embedding_tier"
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +48,7 @@ def init() -> None:
     """
     if _SESSION_ID not in st.session_state:
         # Generate a stable UUID for this browser session. Used as the
-        # ChromaDB collection name and temporary directory prefix so each
+        # index session id and temporary directory prefix so each
         # user's data stays fully isolated from other users.
         st.session_state[_SESSION_ID] = str(uuid.uuid4())
 
@@ -57,10 +59,10 @@ def init() -> None:
     st.session_state.setdefault(_RUN_ERRORS, [])
     st.session_state.setdefault(_PARSER_TIER, DEFAULT_PARSER_TIER)
     st.session_state.setdefault(_CHUNK_TIER, DEFAULT_CHUNK_TIER)
+    st.session_state.setdefault(_EMBEDDING_TIER, DEFAULT_EMBEDDING_TIER)
 
     # Ensure the backend Session object exists for this ID so the
-    # temporary directory and ChromaDB collection are ready before
-    # any component tries to use them
+    # temporary directory is ready before any component tries to use it
     get_or_create_session(st.session_state[_SESSION_ID])
 
 
@@ -209,11 +211,29 @@ def set_chunk_tier(value: str) -> None:
     st.session_state[_CHUNK_TIER] = value
 
 
+def embedding_tier() -> str:
+    """Return the retrieval tier selected for this session.
+
+    Returns:
+        One of fast, medium, or slow. Fast until the user changes it.
+    """
+    return st.session_state[_EMBEDDING_TIER]
+
+
+def set_embedding_tier(value: str) -> None:
+    """Persist the retrieval tier for this session.
+
+    Args:
+        value: One of fast, medium, or slow.
+    """
+    st.session_state[_EMBEDDING_TIER] = value
+
+
 def reset() -> None:
     """Clear results and uploads to prepare for a new pipeline run.
 
-    Intentionally keeps the session ID, the schema, and the parser and
-    chunk tiers so a new batch keeps the same questions and the same cuts.
+    Intentionally keeps the session ID, the schema, and the parser, chunk,
+    and retrieval tiers so a new batch keeps the same questions and cuts.
     """
     st.session_state[_RESULTS] = None
     st.session_state[_UPLOADED_FILES] = []

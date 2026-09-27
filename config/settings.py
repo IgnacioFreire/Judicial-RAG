@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # The session temp directory is deleted once this age is reached.
     session_timeout_minutes: int = Field(default=60, ge=5, le=1440)
 
+    # Supabase. The same admin test user the notebooks already use.
+    # Empty until a process opens the index, so unit tests can import settings.
+    supabase_url: str = ""
+    supabase_anon_key: str = Field(default="", repr=False)
+    supabase_admin_email: str = Field(default="", repr=False)
+    supabase_admin_password: str = Field(default="", repr=False)
+
     @model_validator(mode="after")
     def validate_settings(self) -> "Settings":
         # Validate LLM provider

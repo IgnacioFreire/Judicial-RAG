@@ -1,6 +1,6 @@
 # Docling in this repo
 
-Used for the medium parser tier in `pipeline/extractor.py`. User-visible consequences are specified in [`../product-specs/document-upload.md`](../product-specs/document-upload.md). The fast and slow tiers do not use this converter.
+Used for the medium parser tier in `pipeline/extractor.py`. User-visible consequences are specified in [`../product-specs/document-upload.md`](../product-specs/document-upload.md) and [`../product-specs/chunking.md`](../product-specs/chunking.md). The fast and slow parser tiers do not use this converter.
 
 ## What is on
 
@@ -10,7 +10,7 @@ Off: OCR, table structure, page images, picture images. Do not turn them on to "
 
 ## How text is split
 
-`HybridChunker` with tokenizer `bert-base-multilingual-cased`, `max_tokens=512`, `merge_peers=True`. The tokenizer measures size. It does not compute the embedding.
+`HybridChunker` with tokenizer `intfloat/multilingual-e5-large`, `max_tokens=512`, `merge_peers=True`, for the medium and slow chunk tiers. The fast tier windows each page at the same limit. The tokenizer measures size. It does not compute the embedding.
 
 Stored text is `chunker.contextualize()`, so the heading is inside the chunk. Headings are also stored on `Chunk.headings`. Empty chunks are skipped. The page comes from `meta.doc_items[0].prov[0].page_no`, and if that chain is missing, page 1.
 

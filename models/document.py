@@ -24,7 +24,7 @@ class Chunk(BaseModel):
         headings: Breadcrumb of section headers this chunk falls under, as detected
             by Docling's document hierarchy. Empty list if the chunk has no parent
             section. Example: ["FUNDAMENTOS DE DERECHO", "PRIMERO.-"].
-            Stored as ChromaDB metadata to enable section-aware retrieval.
+            Returned with a retrieval hit so the citation can name the section.
     """
 
     text: str = Field(min_length=1)
@@ -53,7 +53,7 @@ class DocumentResult(BaseModel):
     """Full extraction result for a single PDF.
 
     Produced by extractor.py and consumed by embedder.py. Once the chunks
-    are embedded and stored in ChromaDB, this object is discarded.
+    are embedded and stored in the session index, this object is discarded.
 
     Attributes:
         metadata: High-level document information.

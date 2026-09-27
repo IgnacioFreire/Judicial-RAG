@@ -5,7 +5,7 @@ Notes on how this repo uses a library. They are not the upstream manual. If the 
 | Note | Library | Used in |
 |---|---|---|
 | [`docling.md`](docling.md) | Docling, HybridChunker | `pipeline/extractor.py` |
-| [`embeddings.md`](embeddings.md) | Hugging Face Inference, Chroma, e5 | `pipeline/embedder.py`, `pipeline/vector_store.py` |
+| [`embeddings.md`](embeddings.md) | Hugging Face Inference, Supabase pgvector, e5, BM25, rerank | `pipeline/embedder.py`, `pipeline/vector_store.py`, `pipeline/index_store.py`, `pipeline/lexical.py`, `pipeline/rerank.py` |
 
 Other pieces, without their own note, because the code is the short reference:
 

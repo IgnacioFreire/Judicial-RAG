@@ -1,7 +1,8 @@
 """Apply a chunk tier to text that is already split by page.
 
-Docling keeps its own chunkers. PyMuPDF4LLM and Marker start from one
-chunk per page and, for medium and slow, cut that text to a token limit.
+Docling chooses its own chunker for the medium and slow tiers. Every
+other path, and the fast tier, cuts each page into 512-token windows of
+the embedding tokenizer. The page stays on the chunk.
 """
 
 from transformers import AutoTokenizer
@@ -11,10 +12,8 @@ from models.document import Chunk, DocumentMetadata, DocumentResult
 
 _tokenizers: dict[str, object] = {}
 
-_HYBRID_MODEL = "bert-base-multilingual-cased"
-_FINE_MODEL = "intfloat/multilingual-e5-large"
-_HYBRID_TOKENS = 512
-_FINE_TOKENS = 256
+_WINDOW_MODEL = "intfloat/multilingual-e5-large"
+_WINDOW_TOKENS = 512
 
 
 def merge_page_rows(
@@ -39,14 +38,10 @@ def merge_page_rows(
 
 
 def retier_page_document(document: DocumentResult, chunk_tier: str) -> DocumentResult:
-    """Keep page chunks, or cut each page to the tier's token limit."""
+    """Cut each page into windows that fit the embedding model."""
     method = chunk_method_for(chunk_tier)
-    if method == "page":
-        return document
-    if method == "hybrid":
-        return _window_document(document, _HYBRID_MODEL, _HYBRID_TOKENS)
-    if method == "fine":
-        return _window_document(document, _FINE_MODEL, _FINE_TOKENS)
+    if method in {"window", "hybrid", "context"}:
+        return _window_document(document, _WINDOW_MODEL, _WINDOW_TOKENS)
     raise RuntimeError(f"No chunker is implemented for method '{method}'")
 
 

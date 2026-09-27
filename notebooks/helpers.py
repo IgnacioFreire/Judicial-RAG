@@ -7,9 +7,8 @@ from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path
 
-from supabase import create_client
-
 from models.query import AnswerConfidence
+from supabase import create_client
 
 _MAX_PDF_BYTES = 20 * 1024 * 1024
 
@@ -109,7 +108,7 @@ def _list_bucket(client, bucket: str) -> list[tuple[str, int]]:
 
 
 def new_session_id() -> str:
-    """Return a collection name that belongs only to this notebook run."""
+    """Return a session id that belongs only to this notebook run."""
     return f"nb-{uuid.uuid4()}"
 
 

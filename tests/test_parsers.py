@@ -3,6 +3,11 @@
 import pytest
 
 from config.chunkers import CHUNK_TIERS, DEFAULT_CHUNK_TIER, chunk_method_for
+from config.embeddings import (
+    DEFAULT_EMBEDDING_TIER,
+    EMBEDDING_TIERS,
+    embedding_method_for,
+)
 from config.parsers import DEFAULT_PARSER_TIER, PARSER_TIERS, method_for
 from models.document import Chunk, DocumentMetadata, DocumentResult
 from pipeline.chunking import merge_page_rows, retier_page_document
@@ -23,12 +28,27 @@ def test_tiers_map_to_the_three_methods() -> None:
 
 def test_chunk_tiers_map_to_the_three_methods() -> None:
     assert CHUNK_TIERS == {
-        "fast": "page",
+        "fast": "window",
         "medium": "hybrid",
-        "slow": "fine",
+        "slow": "context",
     }
     assert DEFAULT_CHUNK_TIER == "medium"
-    assert chunk_method_for("slow") == "fine"
+    assert chunk_method_for("slow") == "context"
+
+
+def test_embedding_tiers_map_to_the_three_methods() -> None:
+    assert EMBEDDING_TIERS == {
+        "fast": "dense",
+        "medium": "hybrid",
+        "slow": "rerank",
+    }
+    assert DEFAULT_EMBEDDING_TIER == "fast"
+    assert embedding_method_for("medium") == "hybrid"
+
+
+def test_unknown_embedding_tier_is_rejected() -> None:
+    with pytest.raises(ValueError, match="not configured"):
+        embedding_method_for("colbert")
 
 
 def test_unknown_chunk_tier_is_rejected() -> None:
@@ -50,20 +70,34 @@ def test_page_rows_on_the_same_page_join() -> None:
     ]
 
 
-def test_fast_chunk_tier_keeps_page_chunks() -> None:
+def test_fast_window_splits_a_long_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("pipeline.chunking._tokenizer", lambda _name: _WordTokenizer())
+    monkeypatch.setattr("pipeline.chunking._WINDOW_TOKENS", 2)
+    words = " ".join(f"word{index}" for index in range(5))
     document = DocumentResult(
         metadata=DocumentMetadata(filename="a.pdf", total_pages=1, total_chunks=1),
         chunks=[
             Chunk(
-                text="synthetic line",
+                text=words,
                 source="a.pdf",
-                page=1,
+                page=2,
                 chunk_index=0,
-                chunk_id="a.pdf_1_0",
+                chunk_id="a.pdf_2_0",
             )
         ],
     )
-    assert retier_page_document(document, "fast") is document
+    windowed = retier_page_document(document, "fast")
+    assert [chunk.page for chunk in windowed.chunks] == [2, 2, 2]
+    assert windowed.chunks[0].text == "word0 word1"
+    assert windowed.chunks[-1].text == "word4"
+
+
+class _WordTokenizer:
+    def encode(self, text: str, add_special_tokens: bool = False) -> list[str]:
+        return text.split()
+
+    def decode(self, token_ids: list[str], skip_special_tokens: bool = True) -> str:
+        return " ".join(token_ids)
 
 
 def test_unknown_tier_is_rejected() -> None:

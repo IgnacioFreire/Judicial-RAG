@@ -1,5 +1,7 @@
 # Parser tiers
 
+Closed 2026-09-27. Fast extraction no longer implies one chunk per page; chunking is [`../../product-specs/chunking.md`](../../product-specs/chunking.md).
+
 ## Why
 
 A user should choose how a PDF is read: a fast text-layer pass, the current Docling pass, or a slower layout pass. Judicial PDFs are public and mostly digital, so the default stays the middle tier.
@@ -13,9 +15,9 @@ A user should choose how a PDF is read: a fast text-layer pass, the current Docl
 
 ## Product spec
 
-[`../product-specs/document-upload.md`](../product-specs/document-upload.md) gains the parser-tier requirement. Default medium uses docling without OCR. Fast uses pymupdf4llm, one chunk per page. Slow uses marker and may OCR a region with no usable text. The UI still does not ask whether a PDF is scanned.
+[`../../product-specs/document-upload.md`](../../product-specs/document-upload.md) gains the parser-tier requirement. Default medium uses docling without OCR. Fast uses pymupdf4llm. Slow uses marker and may OCR a region with no usable text. The UI still does not ask whether a PDF is scanned. How pages are later split is in [`../../product-specs/chunking.md`](../../product-specs/chunking.md).
 
-[`../product-specs/session.md`](../product-specs/session.md) records the tier as a session preference that Reset keeps. A future user profile stores the same field. The method map is not per user.
+[`../../product-specs/session.md`](../../product-specs/session.md) records the tier as a session preference that Reset keeps. A future user profile stores the same field. The method map is not per user.
 
 ## Modules
 

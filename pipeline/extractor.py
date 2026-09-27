@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 
 _executor: ThreadPoolExecutor | None = None
 _tokenizer: HuggingFaceTokenizer | None = None
-_fine_tokenizer_cache: HuggingFaceTokenizer | None = None
 _converter: DocumentConverter | None = None
 
 
@@ -74,20 +73,19 @@ def _pool() -> ThreadPoolExecutor:
 
 
 def _chunk_tokenizer() -> HuggingFaceTokenizer:
-    """Load the chunk-size tokenizer on first use.
+    """Load the embedding tokenizer used to measure a section.
 
-    bert-base-multilingual-cased measures tokens only. Embeddings are
-    intfloat/multilingual-e5-large in embedder.py. 512 tokens keeps a
-    chunk inside that model's input.
+    512 tokens is the input limit of multilingual-e5-large. The same
+    tokenizer counts the medium and slow cuts, so a chunk fits the vector.
     """
     global _tokenizer
     if _tokenizer is None:
         _tokenizer = HuggingFaceTokenizer(
-            tokenizer=AutoTokenizer.from_pretrained("bert-base-multilingual-cased"),
+            tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-large"),
             max_tokens=512,
         )
         logger.debug(
-            "Chunking tokenizer loaded: bert-base-multilingual-cased (max_tokens=512)"
+            "Chunking tokenizer loaded: multilingual-e5-large (max_tokens=512)"
         )
     return _tokenizer
 
@@ -226,12 +224,9 @@ def _extract_sync(
 def _chunks_for_tier(doc: object, filename: str, chunk_tier: str) -> list[Chunk]:
     """Chunk a Docling document with the configured tier."""
     method = chunk_method_for(chunk_tier)
-    if method == "page":
-        return _page_chunks(doc, filename)
-    if method == "fine":
-        chunker = HybridChunker(tokenizer=_fine_tokenizer(), merge_peers=True)
-        return _build_chunks(chunker, doc, filename)
-    if method == "hybrid":
+    if method == "window":
+        return _windowed_pages(doc, filename, chunk_tier)
+    if method in {"hybrid", "context"}:
         chunker = HybridChunker(
             tokenizer=_chunk_tokenizer(),
             # Merge consecutive undersized chunks that share the same headings
@@ -242,16 +237,22 @@ def _chunks_for_tier(doc: object, filename: str, chunk_tier: str) -> list[Chunk]
     raise RuntimeError(f"No chunker is implemented for method '{method}'")
 
 
-def _fine_tokenizer() -> HuggingFaceTokenizer:
-    """Load the embedding tokenizer. 256 tokens is the slow, finer cut."""
-    global _fine_tokenizer_cache
-    if _fine_tokenizer_cache is None:
-        _fine_tokenizer_cache = HuggingFaceTokenizer(
-            tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-large"),
-            max_tokens=256,
-        )
-        logger.debug("Fine chunking tokenizer loaded: multilingual-e5-large (256)")
-    return _fine_tokenizer_cache
+def _windowed_pages(doc: object, filename: str, chunk_tier: str) -> list[Chunk]:
+    """One window sequence per page, so a long page is not one vector."""
+    from pipeline.chunking import retier_page_document
+
+    pages = _page_chunks(doc, filename)
+    if not pages:
+        return []
+    wrapped = DocumentResult(
+        metadata=DocumentMetadata(
+            filename=filename,
+            total_pages=max(chunk.page for chunk in pages),
+            total_chunks=len(pages),
+        ),
+        chunks=pages,
+    )
+    return retier_page_document(wrapped, chunk_tier).chunks
 
 
 def _page_chunks(doc: object, filename: str) -> list[Chunk]:

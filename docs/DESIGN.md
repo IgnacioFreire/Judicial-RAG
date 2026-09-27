@@ -15,6 +15,7 @@ One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify var
 │ Advanced settings      │                                 │
 │ Parser                 │                                 │
 │ Chunking               │                                 │
+│ Retrieval              │                                 │
 └────────────────────────┴─────────────────────────────────┘
 ```
 
@@ -32,9 +33,13 @@ One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify var
 | Medium option | `Medium — docling` |
 | Slow option | `Slow — marker` |
 | Chunking tier | `Chunking` |
-| Fast chunk option | `Fast — page` |
+| Fast chunk option | `Fast — window` |
 | Medium chunk option | `Medium — hybrid` |
-| Slow chunk option | `Slow — fine` |
+| Slow chunk option | `Slow — context` |
+| Retrieval tier | `Retrieval` |
+| Fast retrieval option | `Fast — dense` |
+| Medium retrieval option | `Medium — hybrid` |
+| Slow retrieval option | `Slow — rerank` |
 | Missing answer | `No answer found.` |
 | Direct provenance | `Extracted directly` |
 | Inferred provenance | `Inferred through reasoning` |
