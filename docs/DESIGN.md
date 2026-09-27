@@ -46,7 +46,9 @@ One dashboard shell. Title `⚖️ Judicial RAG`. Caption: "Extract and classify
 
 Confidence badges: `high` green, `medium` orange, `low` red, `not_found` gray.
 
-Visible strings are English. A copy change is its own plan and touches the components under `web/src/components/` together.
+The UI supports English and Spanish via `web/src/i18n/`. Theme (light or dark) is stored in the browser. Contextual help uses a `?` control that opens a short dialog. Profile offers sign out (new session cookie), session API keys, theme, and language.
+
+Copy that is not yet in the locale files may stay English until moved into `en.ts` / `es.ts`.
 
 ## Editor fields
 
