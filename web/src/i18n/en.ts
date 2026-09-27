@@ -73,6 +73,12 @@ export const en = {
     answeredHint: "Rows that are not not_found",
     recent: "Recent documents",
     noDocuments: "No PDFs in this session yet.",
+    nextTitle: "Next steps",
+    nextUpload: "Upload PDFs",
+    nextUploadHint: "Add files on the documents page.",
+    nextSchema: "Define questions",
+    nextSchemaHint: "Save a schema before you run.",
+    viewAll: "View all",
   },
   documents: {
     title: "Documents",
@@ -82,6 +88,7 @@ export const en = {
     accepted: "Accepted",
     finished: "Finished",
     empty: "No PDFs in this session yet.",
+    count: "in this session",
   },
   documentDetail: {
     back: "Documents",

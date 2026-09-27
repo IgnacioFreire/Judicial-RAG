@@ -73,6 +73,12 @@ export const es = {
     answeredHint: "Filas que no son not_found",
     recent: "Documentos recientes",
     noDocuments: "Aún no hay PDFs en esta sesión.",
+    nextTitle: "Siguientes pasos",
+    nextUpload: "Subir PDFs",
+    nextUploadHint: "Añade archivos en la página de documentos.",
+    nextSchema: "Definir preguntas",
+    nextSchemaHint: "Guarda un esquema antes de ejecutar.",
+    viewAll: "Ver todos",
   },
   documents: {
     title: "Documentos",
@@ -82,6 +88,7 @@ export const es = {
     accepted: "Aceptado",
     finished: "Finalizado",
     empty: "Aún no hay PDFs en esta sesión.",
+    count: "en esta sesión",
   },
   documentDetail: {
     back: "Documentos",

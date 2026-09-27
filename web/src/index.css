@@ -27,7 +27,7 @@
 }
 
 :root {
-  --background: #f4f4f5;
+  --background: #fafafa;
   --foreground: #18181b;
   --card: #ffffff;
   --card-foreground: #18181b;
@@ -40,10 +40,10 @@
   --destructive: #dc2626;
   --accent: #f4f4f5;
   --accent-foreground: #18181b;
-  --sidebar: #09090b;
-  --sidebar-foreground: #fafafa;
-  --sidebar-muted: #a1a1aa;
-  --sidebar-accent: #27272a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #18181b;
+  --sidebar-muted: #71717a;
+  --sidebar-accent: #f4f4f5;
   --canvas: #fafafa;
 }
 
