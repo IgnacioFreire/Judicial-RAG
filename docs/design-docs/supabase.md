@@ -4,7 +4,7 @@ Decision confirmed on 2026-09-27. One Supabase project is the store for users, s
 
 ## What is true now
 
-`notebooks/01_pdfs.ipynb` signs in as one admin test user and reads the private bucket `pdfs`. The account belongs to the maintainer. The notebook uses the anon key plus that user's email and password, all from `.env`. It does not use the service role key.
+`notebooks/01_pdfs.ipynb` and `notebooks/02_extraction.ipynb` sign in as one admin test user and read the private bucket `pdfs`. The account belongs to the maintainer. The notebooks use the anon key plus that user's email and password, all from `.env`. They do not use the service role key. The extraction notebook writes accepted PDFs to a temporary directory for Docling and deletes those files in its last cell.
 
 The Streamlit app still writes uploads to a temporary directory and keeps Chroma in memory. [`../product-specs/session.md`](../product-specs/session.md) and [`../product-specs/document-upload.md`](../product-specs/document-upload.md) still describe that behavior. They change when the app code moves, not before.
 

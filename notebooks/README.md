@@ -45,9 +45,13 @@ using (
 
 A good run prints the bucket name, one row per object with `accepted` or `rejected: ...`, then `accepted`, `rejected`, and `list` seconds. The last cell prints a byte count for each accepted file and does not print the PDF text. A rejected row names the reason: not a PDF, over 20 MB, or an empty name.
 
+## Extraction from the bucket
+
+`02_extraction.ipynb` uses the same admin account as `01_pdfs.ipynb`. It downloads each accepted PDF into a temporary directory, runs `extract`, and the last cell deletes those files. The first run downloads Docling models. It does not embed and it does not print chunk text unless you set `SHOW_TEXT = True`.
+
 ## Local PDFs for the later notebooks
 
-Notebooks `02` through `07` do not read Supabase. Put PDFs in `notebooks/inputs/`, or set `NOTEBOOK_PDF_DIR` to another directory. Those calls need the LLM key and `HUGGINGFACE_API_KEY` in `.env`. Extraction downloads Docling models on first use.
+Notebooks `03` through `07` do not read Supabase. Put PDFs in `notebooks/inputs/`, or set `NOTEBOOK_PDF_DIR` to another directory. Those calls need the LLM key and `HUGGINGFACE_API_KEY` in `.env`.
 
 The question cells are templates. Replace the label and the instruction with your own question before you run retrieval, the agent, results, or KPIs. The template is not a legal rule.
 
@@ -56,7 +60,7 @@ The question cells are templates. Replace the label and the instruction with you
 | Notebook | You are checking | A good run shows |
 |---|---|---|
 | `01_pdfs.ipynb` | Sign-in and the private bucket | Accepted and rejected rows, then byte counts. No Docling. |
-| `02_extraction.ipynb` | `extract` on each local PDF | Filename, pages, chunks, heading count, and min, median, and max characters. A failure prints the exception type and continues. A PDF with no chunks is a failure. |
+| `02_extraction.ipynb` | `extract` on each PDF from the bucket | Filename, pages, chunks, heading count, and min, median, and max characters. A failure prints the exception type and continues. A PDF with no chunks is a failure. The last cell deletes the temporary files. |
 | `03_embedding.ipynb` | `embed_document` | Filename, chunk count, indexed sources, and embed seconds. The last cell deletes the collection. |
 | `04_retrieval.ipynb` | `search` for one question and one file | Rank, page, headings, distance, and character count. Default `n_results` is 5. The last cell deletes the collection. |
 | `05_agent.ipynb` | `answer_question` for one question and one file | Label, question type, confidence, answer source, citation page, citation score, citation character count, and seconds. The last cell deletes the collection. |
