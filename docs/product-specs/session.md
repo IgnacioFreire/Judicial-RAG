@@ -28,6 +28,17 @@ The system SHALL drop the in-memory search index when the process exits. It MUST
 - **THEN** previously indexed documents are gone
 - **AND** the user must upload them again to ask questions
 
+### Requirement: Parser tier
+The parser tier and the chunk tier are preferences of the current session. Each default is medium. Reset MUST keep both. Two sessions MAY select different tiers. A stored user profile MUST persist these same fields for that user. The mapping from tier to method is not a per-user setting.
+
+#### Scenario: Reset keeps the tier
+- **WHEN** the user has selected a tier and then resets
+- **THEN** the selected tier stays
+
+#### Scenario: Two sessions
+- **WHEN** two sessions have selected different tiers
+- **THEN** each run uses the tier stored on its own session
+
 ### Requirement: No case text in the repository
 The application MUST NOT write uploaded PDFs or API keys into the git repository.
 

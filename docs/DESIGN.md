@@ -12,6 +12,9 @@ One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify var
 │ editors + categories   │ one expander per PDF            │
 │ Add question           │                                 │
 │ Save schema            │                                 │
+│ Advanced settings      │                                 │
+│ Parser                 │                                 │
+│ Chunking               │                                 │
 └────────────────────────┴─────────────────────────────────┘
 ```
 
@@ -23,13 +26,22 @@ One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify var
 | Reset | `Reset` |
 | Add a draft | `Add question` |
 | Persist the schema | `Save schema` |
+| Advanced settings | `Advanced settings` |
+| Parser tier | `Parser` |
+| Fast option | `Fast — pymupdf4llm` |
+| Medium option | `Medium — docling` |
+| Slow option | `Slow — marker` |
+| Chunking tier | `Chunking` |
+| Fast chunk option | `Fast — page` |
+| Medium chunk option | `Medium — hybrid` |
+| Slow chunk option | `Slow — fine` |
 | Missing answer | `No answer found.` |
 | Direct provenance | `Extracted directly` |
 | Inferred provenance | `Inferred through reasoning` |
 
 Confidence badges: `high` green, `medium` orange, `low` red, `not_found` gray.
 
-Visible strings are English. A copy change is its own plan and touches the three components under `app/components/` and `app/main.py` together.
+Visible strings are English. A copy change is its own plan and touches the components under `app/components/` and `app/main.py` together.
 
 ## Editor fields
 

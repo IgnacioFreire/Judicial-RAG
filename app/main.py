@@ -13,7 +13,7 @@ from pathlib import Path
 import streamlit as st
 
 from app import session_state as state
-from app.components import question_form, results_viewer, uploader
+from app.components import advanced_settings, question_form, results_viewer, uploader
 from models.query import QuestionSchema
 from pipeline.orchestrator import ProgressEvent, Stage, run
 from storage.cleanup import cleanup_expired_sessions
@@ -67,6 +67,8 @@ def main() -> None:
         pdf_paths = uploader.render()
         st.divider()
         question_form.render()
+        st.divider()
+        advanced_settings.render()
 
     _render_run_section(pdf_paths)
 
@@ -147,6 +149,8 @@ def _run_pipeline(pdf_paths: list[Path], schema: QuestionSchema) -> None:
                 schema=schema,
                 session_id=state.session_id(),
                 on_progress=on_progress,
+                parser_tier=state.parser_tier(),
+                chunk_tier=state.chunk_tier(),
             )
         )
         state.set_results(results)

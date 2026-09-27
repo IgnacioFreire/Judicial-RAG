@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from config.chunkers import DEFAULT_CHUNK_TIER
+from config.parsers import DEFAULT_PARSER_TIER
 from models.query import AgentAnswer, AnswerConfidence, DocumentAnswers, QuestionSchema
 from pipeline.embedder import delete_source, embed_document
 from pipeline.rag_agent import answer_question
@@ -77,6 +79,8 @@ async def run(
     schema: QuestionSchema,
     session_id: str,
     on_progress: OnProgress | None = None,
+    parser_tier: str = DEFAULT_PARSER_TIER,
+    chunk_tier: str = DEFAULT_CHUNK_TIER,
 ) -> list[DocumentAnswers]:
     """Run the full pipeline for a list of PDFs and a question schema.
 
@@ -96,6 +100,7 @@ async def run(
         schema:      User-defined question schema applied to every document.
         session_id:  User session identifier for vector store isolation.
         on_progress: Optional callback invoked on every progress event.
+        parser_tier: Parser tier selected for this session.
 
     Returns:
         One DocumentAnswers per PDF indexed in this run, each containing
@@ -122,7 +127,13 @@ async def run(
     )
 
     _drop_stale_sources(session_id, pdf_paths)
-    indexed = await _index_all(pdf_paths, session_id, on_progress)
+    indexed = await _index_all(
+        pdf_paths,
+        session_id,
+        on_progress,
+        parser_tier,
+        chunk_tier,
+    )
     results = _answer_all(sorted(set(indexed)), schema, session_id, on_progress)
 
     logger.info(
@@ -163,6 +174,8 @@ async def _index_all(
     pdf_paths: list[Path],
     session_id: str,
     on_progress: OnProgress | None,
+    parser_tier: str,
+    chunk_tier: str,
 ) -> list[str]:
     """Extract and embed all PDFs concurrently via asyncio.gather.
 
@@ -173,6 +186,7 @@ async def _index_all(
         pdf_paths:   PDFs to index.
         session_id:  User session identifier.
         on_progress: Progress callback.
+        parser_tier: Parser tier selected for this session.
 
     Returns:
         Filenames that were indexed and can be answered. A PDF that
@@ -180,7 +194,15 @@ async def _index_all(
     """
     total = len(pdf_paths)
     tasks = [
-        _index_one(path, session_id, on_progress, idx, total)
+        _index_one(
+            path,
+            session_id,
+            on_progress,
+            idx,
+            total,
+            parser_tier,
+            chunk_tier,
+        )
         for idx, path in enumerate(pdf_paths, start=1)
     ]
     outcomes = await asyncio.gather(*tasks, return_exceptions=True)
@@ -199,6 +221,8 @@ async def _index_one(
     on_progress: OnProgress | None,
     current: int,
     total: int,
+    parser_tier: str,
+    chunk_tier: str,
 ) -> str | None:
     """Extract and embed a single PDF, emitting progress at each stage.
 
@@ -211,6 +235,7 @@ async def _index_one(
         on_progress: Progress callback.
         current:     1-based index of this PDF in the batch.
         total:       Total number of PDFs in the batch.
+        parser_tier: Parser tier selected for this session.
 
     Returns:
         The PDF filename when it was indexed, otherwise None.
@@ -231,7 +256,7 @@ async def _index_one(
             ),
         )
 
-        document = await extract(pdf_path)
+        document = await extract(pdf_path, tier=parser_tier, chunk_tier=chunk_tier)
         logger.debug("Extracted %s: %d chunks", source, document.metadata.total_chunks)
         if document.metadata.total_chunks == 0:
             raise RuntimeError("produced no text")

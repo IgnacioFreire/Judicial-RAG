@@ -11,6 +11,8 @@ import uuid
 
 import streamlit as st
 
+from config.chunkers import DEFAULT_CHUNK_TIER
+from config.parsers import DEFAULT_PARSER_TIER
 from models.query import QuestionSchema
 from storage.session_manager import get_or_create_session
 
@@ -26,6 +28,8 @@ _RESULTS = "results"
 _IS_PROCESSING = "is_processing"
 _UPLOADED_FILES = "uploaded_files"
 _RUN_ERRORS = "run_errors"
+_PARSER_TIER = "parser_tier"
+_CHUNK_TIER = "chunk_tier"
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +55,8 @@ def init() -> None:
     st.session_state.setdefault(_IS_PROCESSING, False)
     st.session_state.setdefault(_UPLOADED_FILES, [])
     st.session_state.setdefault(_RUN_ERRORS, [])
+    st.session_state.setdefault(_PARSER_TIER, DEFAULT_PARSER_TIER)
+    st.session_state.setdefault(_CHUNK_TIER, DEFAULT_CHUNK_TIER)
 
     # Ensure the backend Session object exists for this ID so the
     # temporary directory and ChromaDB collection are ready before
@@ -167,11 +173,47 @@ def set_run_errors(value: list[str]) -> None:
     st.session_state[_RUN_ERRORS] = value
 
 
+def parser_tier() -> str:
+    """Return the parser tier selected for this session.
+
+    Returns:
+        One of fast, medium, or slow. Medium until the user changes it.
+    """
+    return st.session_state[_PARSER_TIER]
+
+
+def set_parser_tier(value: str) -> None:
+    """Persist the parser tier for this session.
+
+    Args:
+        value: One of fast, medium, or slow.
+    """
+    st.session_state[_PARSER_TIER] = value
+
+
+def chunk_tier() -> str:
+    """Return the chunk tier selected for this session.
+
+    Returns:
+        One of fast, medium, or slow. Medium until the user changes it.
+    """
+    return st.session_state[_CHUNK_TIER]
+
+
+def set_chunk_tier(value: str) -> None:
+    """Persist the chunk tier for this session.
+
+    Args:
+        value: One of fast, medium, or slow.
+    """
+    st.session_state[_CHUNK_TIER] = value
+
+
 def reset() -> None:
     """Clear results and uploads to prepare for a new pipeline run.
 
-    Intentionally keeps the session ID and schema intact so the user
-    does not need to redefine questions when uploading a new batch of PDFs.
+    Intentionally keeps the session ID, the schema, and the parser and
+    chunk tiers so a new batch keeps the same questions and the same cuts.
     """
     st.session_state[_RESULTS] = None
     st.session_state[_UPLOADED_FILES] = []

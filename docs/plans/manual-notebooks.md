@@ -84,13 +84,13 @@ No Docling. The bytes are discarded after the count. `02_extraction.ipynb` reads
 
 ### `notebooks/02_extraction.ipynb`
 
-Process: `pipeline.extractor.extract` on each accepted PDF from the private bucket.
+Process: `pipeline.extractor.extract` on each accepted PDF from the private bucket, once per parser tier and chunk tier. The default lists are the keys of `config/parsers.py` and `config/chunkers.py`.
 
 Cells:
 
-1. Setup: `download_supabase_pdfs` into a temporary directory. Time this separately.
-2. For each path, `await extract(path)` inside `timed("extract")`.
-3. Print filename, `total_pages`, `total_chunks`, heading count, and min, median, and max characters per chunk.
+1. Setup: `download_supabase_pdfs` into a temporary directory. Time this separately. Print each selected parser tier and chunk tier with its method.
+2. For each parser tier, chunk tier, and path, `await extract(path, tier=tier, chunk_tier=chunk_tier)` inside `timed("extract")`.
+3. Print parser tier, chunk tier, chunk method, filename, `total_pages`, `total_chunks`, heading count, and min, median, and max characters per chunk.
 4. Optional: with `SHOW_TEXT`, print one chunk's page, headings, and text.
 5. Delete the temporary directory.
 

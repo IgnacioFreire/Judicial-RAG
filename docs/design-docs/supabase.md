@@ -18,4 +18,6 @@ Uploads for this test account are made from the Supabase dashboard. The notebook
 
 ## Later
 
-A React client keeps a login token. The server stores sessions, schemas, and results in Postgres, PDF bytes in the private bucket, and embeddings in `pgvector`, each row scoped by user id and session id. That move needs its own confirmation before the app code changes, because it replaces session isolation.
+A React client keeps a login token. The server stores sessions, schemas, and results in Postgres, PDF bytes in the private bucket, and embeddings in `pgvector`, each row scoped by user id and session id. The user profile stores `parser_tier` and `chunk_tier` (`fast`, `medium`, or `slow`). The mapping of those tiers to methods stays in `config/parsers.py` and `config/chunkers.py` and is the same for every user. That move needs its own confirmation before the app code changes, because it replaces session isolation.
+
+Streamlit already keeps `parser_tier` and `chunk_tier` on the current session, under Advanced settings. There is no user row yet, so the preference lasts for that session only.

@@ -47,7 +47,7 @@ A good run prints the bucket name, one row per object with `accepted` or `reject
 
 ## Extraction from the bucket
 
-`02_extraction.ipynb` uses the same admin account as `01_pdfs.ipynb`. It downloads each accepted PDF into a temporary directory, runs `extract`, and the last cell deletes those files. The first run downloads Docling models. It does not embed and it does not print chunk text unless you set `SHOW_TEXT = True`.
+`02_extraction.ipynb` uses the same admin account as `01_pdfs.ipynb`. It downloads each accepted PDF into a temporary directory, then runs `extract` once for every pair of parser tier and chunk tier. Parser tiers are in `config/parsers.py`. Chunk tiers are in `config/chunkers.py`: fast is one chunk per page, medium is the section chunker at 512 tokens, and slow cuts at 256 tokens with the embedding tokenizer. Narrow `TIERS` or `CHUNK_TIERS_SELECTED` to skip combinations. The last cell deletes those files. The first medium parser run downloads Docling models. The first slow parser run downloads Marker models. The first slow chunk run downloads the embedding tokenizer. It does not embed and it does not print chunk text unless you set `SHOW_TEXT = True`.
 
 ## Local PDFs for the later notebooks
 
@@ -60,7 +60,7 @@ The question cells are templates. Replace the label and the instruction with you
 | Notebook | You are checking | A good run shows |
 |---|---|---|
 | `01_pdfs.ipynb` | Sign-in and the private bucket | Accepted and rejected rows, then byte counts. No Docling. |
-| `02_extraction.ipynb` | `extract` on each PDF from the bucket | Filename, pages, chunks, heading count, and min, median, and max characters. A failure prints the exception type and continues. A PDF with no chunks is a failure. The last cell deletes the temporary files. |
+| `02_extraction.ipynb` | `extract` on each PDF from the bucket, once per parser tier and chunk tier | Parser, chunk tier, chunk method, filename, pages, chunks, heading count, and min, median, and max characters, plus seconds. A failure prints the exception type and continues. A PDF with no chunks is a failure. The last cell deletes the temporary files. |
 | `03_embedding.ipynb` | `embed_document` | Filename, chunk count, indexed sources, and embed seconds. The last cell deletes the collection. |
 | `04_retrieval.ipynb` | `search` for one question and one file | Rank, page, headings, distance, and character count. Default `n_results` is 5. The last cell deletes the collection. |
 | `05_agent.ipynb` | `answer_question` for one question and one file | Label, question type, confidence, answer source, citation page, citation score, citation character count, and seconds. The last cell deletes the collection. |
