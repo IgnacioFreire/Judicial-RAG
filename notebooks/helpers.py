@@ -32,6 +32,26 @@ def accepted_pdfs(directory: Path) -> tuple[list[Path], list[tuple[Path, str]]]:
     return accepted, rejected
 
 
+def classify_uploads(
+    files: list[tuple[str, int]],
+) -> tuple[list[tuple[str, int]], list[tuple[str, int, str]]]:
+    """Apply the 20 MB PDF rule to storage objects already listed."""
+    accepted: list[tuple[str, int]] = []
+    rejected: list[tuple[str, int, str]] = []
+    for name, size in files:
+        if name == ".gitkeep":
+            continue
+        if not name.strip():
+            rejected.append((name, size, "empty name"))
+        elif not name.lower().endswith(".pdf"):
+            rejected.append((name, size, "not a PDF"))
+        elif size > _MAX_PDF_BYTES:
+            rejected.append((name, size, "over 20 MB"))
+        else:
+            accepted.append((name, size))
+    return accepted, rejected
+
+
 def new_session_id() -> str:
     """Return a collection name that belongs only to this notebook run."""
     return f"nb-{uuid.uuid4()}"
