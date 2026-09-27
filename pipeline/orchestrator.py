@@ -15,6 +15,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from config.chunkers import DEFAULT_CHUNK_TIER
+from config.embeddings import DEFAULT_EMBEDDING_TIER
 from config.parsers import DEFAULT_PARSER_TIER
 from models.query import AgentAnswer, AnswerConfidence, DocumentAnswers, QuestionSchema
 from pipeline.embedder import delete_source, embed_document
@@ -32,8 +33,7 @@ logger = logging.getLogger(__name__)
 class Stage(StrEnum):
     """Pipeline stage emitted to the UI via the progress callback.
 
-    Inherits from str so values serialise naturally in Streamlit widgets
-    without an explicit .value call.
+    Inherits from str so values serialise in JSON without an extra .value call.
     """
 
     EXTRACTING = "extracting"
@@ -81,6 +81,7 @@ async def run(
     on_progress: OnProgress | None = None,
     parser_tier: str = DEFAULT_PARSER_TIER,
     chunk_tier: str = DEFAULT_CHUNK_TIER,
+    embedding_tier: str = DEFAULT_EMBEDDING_TIER,
 ) -> list[DocumentAnswers]:
     """Run the full pipeline for a list of PDFs and a question schema.
 
@@ -101,6 +102,8 @@ async def run(
         session_id:  User session identifier for vector store isolation.
         on_progress: Optional callback invoked on every progress event.
         parser_tier: Parser tier selected for this session.
+        chunk_tier: Chunk tier selected for this session.
+        embedding_tier: Retrieval tier selected for this session.
 
     Returns:
         One DocumentAnswers per PDF indexed in this run, each containing
@@ -134,7 +137,13 @@ async def run(
         parser_tier,
         chunk_tier,
     )
-    results = _answer_all(sorted(set(indexed)), schema, session_id, on_progress)
+    results = _answer_all(
+        sorted(set(indexed)),
+        schema,
+        session_id,
+        on_progress,
+        embedding_tier,
+    )
 
     logger.info(
         "Pipeline complete: %d document(s), %d answer(s) (session=%s)",
@@ -272,7 +281,7 @@ async def _index_one(
             ),
         )
 
-        await embed_document(document, session_id)
+        await embed_document(document, session_id, chunk_tier=chunk_tier)
         logger.debug("Indexed %s (%d/%d)", source, current, total)
         return source
 
@@ -302,6 +311,7 @@ def _answer_all(
     schema: QuestionSchema,
     session_id: str,
     on_progress: OnProgress | None,
+    embedding_tier: str,
 ) -> list[DocumentAnswers]:
     """Answer every question for every indexed document.
 
@@ -343,6 +353,7 @@ def _answer_all(
                     question=question,
                     session_id=session_id,
                     source=source,
+                    embedding_tier=embedding_tier,
                 )
                 logger.debug(
                     "Answered %r for %s (confidence=%s)",

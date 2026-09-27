@@ -13,3 +13,6 @@ docs
 .cursor
 *.md
 env.example
+node_modules
+web/node_modules
+web/dist

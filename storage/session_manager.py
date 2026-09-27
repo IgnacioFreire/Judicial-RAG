@@ -27,7 +27,7 @@ class Session:
     """All state associated with a single user session.
 
     Attributes:
-        session_id:  Unique identifier used for ChromaDB collection isolation
+        session_id:  Unique identifier used for index isolation
                      and temporary directory naming.
         temp_dir:    TemporaryDirectory instance. Holds the context manager
                      that controls the directory's lifetime on disk.
@@ -46,8 +46,7 @@ class Session:
 # ---------------------------------------------------------------------------
 # Module-level registry
 # ---------------------------------------------------------------------------
-# Maps session_id → Session for all active sessions. A plain dict is safe
-# here because Streamlit runs each user in a single thread.
+# Maps session_id → Session for all active sessions in this process.
 
 _sessions: dict[str, Session] = {}
 
@@ -103,12 +102,10 @@ def get_session(session_id: str) -> Session | None:
 def get_or_create_session(session_id: str) -> Session:
     """Retrieve an existing session or create a new one with the given ID.
 
-    Used by the Streamlit UI to restore a session after a page rerun.
-    Streamlit reruns the entire script on every interaction, so the session
-    must persist across reruns via st.session_state.
+    Used by the HTTP UI to restore a session from the session cookie.
 
     Args:
-        session_id: Unique session identifier stored in st.session_state.
+        session_id: Unique session identifier stored in the session cookie.
 
     Returns:
         Existing Session if found, otherwise a newly created one.
@@ -118,8 +115,8 @@ def get_or_create_session(session_id: str) -> Session:
         logger.debug("Session restored: %s", session_id)
         return session
 
-    # Session was lost — recreate it with the same ID so ChromaDB collections
-    # remain accessible under the same name
+    # Session was lost — recreate it with the same ID so the index
+    # remains accessible under the same session id
     temp_dir = tempfile.TemporaryDirectory(prefix=f"judicial_rag_{session_id}_")
     pdf_dir = Path(temp_dir.name) / "pdfs"
     pdf_dir.mkdir(parents=True, exist_ok=True)

@@ -1,35 +1,27 @@
 """
 embedder.py
 
-Embedding generation and vector store management.
-Converts document chunks into vector representations using the
-HF Inference API and stores them in ChromaDB with their metadata.
-Each user session gets an isolated ChromaDB collection so that
-documents from different users never mix.
+Embedding generation and vector store writes.
+Converts document chunks into vectors with the HF Inference API and
+stores them in the session index with their metadata.
+Each session id is isolated so documents from different sessions never mix.
 """
 
 import asyncio
-import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
-import chromadb
 import numpy as np
 from huggingface_hub import InferenceClient
 
+from config.chunkers import DEFAULT_CHUNK_TIER, chunk_method_for
 from config.settings import settings
 from models.document import Chunk, DocumentResult
+from pipeline.index_store import IndexRow, get_index
+from services.llm_usage import bind, unbind
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Module-level singletons
-# ---------------------------------------------------------------------------
-# Expensive resources are initialised once at import time and shared across
-# all calls. Both ChromaDB and InferenceClient are thread-safe.
-
-_chroma = chromadb.Client()
-logger.debug("ChromaDB in-memory client initialised")
 
 _inference = None
 _executor: ThreadPoolExecutor | None = None
@@ -45,21 +37,21 @@ _QUERY_PREFIX = "query: "
 _BATCH_SIZE = 32
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+async def embed_document(
+    document: DocumentResult,
+    session_id: str,
+    chunk_tier: str = DEFAULT_CHUNK_TIER,
+) -> None:
+    """Embed all chunks of a document and store them in the session index.
 
-
-async def embed_document(document: DocumentResult, session_id: str) -> None:
-    """Embed all chunks of a document and store them in ChromaDB.
-
-    Each session gets its own isolated collection identified by session_id.
-    Re-processing the same PDF is safe — upsert deduplicates by chunk_id.
+    Re-processing the same PDF replaces that filename's chunks. A shorter
+    file does not leave the previous chunk ids behind.
 
     Args:
         document: Extraction result from extractor.py containing all chunks.
-        session_id: Unique identifier for the user session. Used as the
-            ChromaDB collection name to isolate data between users.
+        session_id: Unique identifier for the user session.
+        chunk_tier: Chunk setting. Slow prepends a situation sentence
+            to the embedded text only.
     """
     logger.info(
         "Embedding started: %s — %d chunks (session=%s)",
@@ -68,7 +60,7 @@ async def embed_document(document: DocumentResult, session_id: str) -> None:
         session_id,
     )
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(_pool(), _embed_sync, document, session_id)
+    await loop.run_in_executor(_pool(), _embed_sync, document, session_id, chunk_tier)
     logger.info(
         "Embedding complete: %s (session=%s)",
         document.metadata.filename,
@@ -87,80 +79,47 @@ def embed_query(text: str) -> list[float]:
         text: The user question or search query.
 
     Returns:
-        1024-dimensional float vector ready for ChromaDB similarity search.
+        1024-dimensional float vector.
     """
     logger.debug("Embedding query (%d chars)", len(text))
     return _to_vector(f"{_QUERY_PREFIX}{text}")
 
 
-def get_collection(session_id: str) -> chromadb.Collection:
-    """Retrieve or create the ChromaDB collection for a session.
-
-    Args:
-        session_id: Unique identifier for the user session.
-
-    Returns:
-        ChromaDB collection scoped to this session.
-    """
-    name = _collection_name(session_id)
-    collection = _chroma.get_or_create_collection(
-        name=name,
-        # Cosine similarity is standard for sentence embedding retrieval.
-        # It measures semantic angle between vectors independently of their
-        # magnitude, which is the correct metric for this use case.
-        metadata={"hnsw:space": "cosine"},
-    )
-    logger.debug("Collection ready: %s (%d items)", name, collection.count())
-    return collection
-
-
 def delete_source(session_id: str, source: str) -> None:
-    """Delete every chunk stored for one PDF inside a session collection.
+    """Delete every chunk stored for one PDF inside a session.
 
     Called before re-indexing that filename, and when a run no longer
-    includes it. A missing collection is ignored: the session may not
-    have indexed anything yet.
+    includes it.
 
     Args:
         session_id: Unique identifier for the user session.
-        source: PDF filename stored in chunk metadata.
+        source: PDF filename stored on the chunk.
     """
-    name = _collection_name(session_id)
-    try:
-        collection = _chroma.get_collection(name)
-    except Exception:
-        logger.debug("No collection to prune for session=%s", session_id)
-        return
-    try:
-        collection.delete(where={"source": source})
-        logger.info("Deleted indexed source %s (session=%s)", source, session_id)
-    except Exception:
-        logger.debug(
-            "No chunks to delete for source %s (session=%s)", source, session_id
-        )
+    get_index().delete_source(session_id, source)
+    logger.info("Deleted indexed source %s (session=%s)", source, session_id)
 
 
 def delete_collection(session_id: str) -> None:
-    """Delete the ChromaDB collection for a session.
+    """Delete every indexed chunk for a session.
 
     Called by storage/cleanup.py when a session ends or times out.
-    Silently ignores missing collections — a session may have ended before
-    any PDFs were processed.
+    A session that never indexed anything is a no-op.
 
     Args:
         session_id: Unique identifier for the user session.
     """
-    name = _collection_name(session_id)
-    try:
-        _chroma.delete_collection(name)
-        logger.info("Collection deleted: %s", name)
-    except Exception:
-        logger.debug("Collection not found for deletion (safe to ignore): %s", name)
+    get_index().delete_session(session_id)
+    logger.debug("Index deleted for session=%s", session_id)
 
 
-# ---------------------------------------------------------------------------
-# Internal implementation
-# ---------------------------------------------------------------------------
+def delete_expired_index(cutoff: datetime) -> None:
+    """Delete chunks first stored at or before cutoff.
+
+    Args:
+        cutoff: Aware UTC timestamp. Rows stored at or before this time go.
+    """
+    get_index().delete_older_than(cutoff)
+    logger.debug("Expired index rows deleted up to %s", cutoff.isoformat())
 
 
 def _client() -> InferenceClient:
@@ -183,75 +142,83 @@ def _pool() -> ThreadPoolExecutor:
     return _executor
 
 
-def _collection_name(session_id: str) -> str:
-    """Build a ChromaDB-compatible collection name from a session ID.
-
-    ChromaDB requires names to be 3-63 characters, start and end with an
-    alphanumeric character, and contain only alphanumerics and hyphens.
-    The "s-" prefix guarantees the name starts with a letter even when
-    session_id begins with a digit.
-
-    Args:
-        session_id: Raw session identifier from Streamlit.
-
-    Returns:
-        Sanitised collection name safe for ChromaDB.
-    """
-    return f"s-{session_id[:50]}"
-
-
-def _embed_sync(document: DocumentResult, session_id: str) -> None:
-    """Embed all chunks synchronously and upsert them into ChromaDB.
+def _embed_sync(
+    document: DocumentResult,
+    session_id: str,
+    chunk_tier: str = DEFAULT_CHUNK_TIER,
+) -> None:
+    """Embed all chunks synchronously and upsert them into the session index.
 
     Processes chunks in fixed-size batches to respect API rate limits.
-    Uses upsert so that re-processing the same PDF replaces existing
-    vectors rather than creating duplicates.
+    The previous version of the same PDF is deleted first so a shorter
+    file cannot leave old ids.
 
     Args:
         document: Extraction result containing the chunks to embed.
-        session_id: User session identifier for collection isolation.
+        session_id: User session identifier for isolation.
     """
     chunks = document.chunks
-    # Drop the previous version first so a shorter file cannot leave old ids.
-    delete_source(session_id, document.metadata.filename)
-    if not chunks:
-        logger.warning("No chunks to embed for %s", document.metadata.filename)
-        return
+    token = bind(session_id)
+    try:
+        delete_source(session_id, document.metadata.filename)
+        if not chunks:
+            logger.warning("No chunks to embed for %s", document.metadata.filename)
+            return
 
-    collection = get_collection(session_id)
-    total = len(chunks)
+        total = len(chunks)
+        for start in range(0, total, _BATCH_SIZE):
+            batch = chunks[start : start + _BATCH_SIZE]
+            logger.debug(
+                "Embedding batch %d-%d / %d for %s",
+                start + 1,
+                start + len(batch),
+                total,
+                document.metadata.filename,
+            )
+            _upsert_batch(session_id, batch, chunk_tier)
+    finally:
+        unbind(token)
 
-    for start in range(0, total, _BATCH_SIZE):
-        batch = chunks[start : start + _BATCH_SIZE]
-        logger.debug(
-            "Embedding batch %d-%d / %d for %s",
-            start + 1,
-            start + len(batch),
-            total,
-            document.metadata.filename,
-        )
-        _upsert_batch(collection, batch)
 
-
-def _upsert_batch(collection: chromadb.Collection, chunks: list[Chunk]) -> None:
-    """Generate embeddings for a batch and upsert them into ChromaDB.
+def _upsert_batch(
+    session_id: str,
+    chunks: list[Chunk],
+    chunk_tier: str = DEFAULT_CHUNK_TIER,
+) -> None:
+    """Generate embeddings for a batch and upsert them into the session index.
 
     Args:
-        collection: Target ChromaDB collection.
+        session_id: User session identifier.
         chunks: Batch of chunks to embed and store.
     """
-    texts = [f"{_PASSAGE_PREFIX}{chunk.text}" for chunk in chunks]
+    texts = [_passage(chunk, chunk_tier) for chunk in chunks]
     embeddings = _to_vectors(texts)
-
-    collection.upsert(
-        ids=[chunk.chunk_id for chunk in chunks],
-        embeddings=embeddings,
-        # Store the raw text (without prefix) so the agent can return it
-        # as the citation fragment shown to the user in the UI
-        documents=[chunk.text for chunk in chunks],
-        metadatas=[_build_metadata(chunk) for chunk in chunks],
-    )
+    rows = [
+        IndexRow(
+            chunk_id=chunk.chunk_id,
+            source=chunk.source,
+            page=chunk.page,
+            chunk_index=chunk.chunk_index,
+            headings=list(chunk.headings),
+            text=chunk.text,
+            embedding=embedding,
+        )
+        for chunk, embedding in zip(chunks, embeddings, strict=True)
+    ]
+    get_index().upsert(session_id, rows)
     logger.debug("Upserted %d chunks", len(chunks))
+
+
+def _passage(chunk: Chunk, chunk_tier: str) -> str:
+    """Build the text sent to the embedding model. The stored text is separate."""
+    body = chunk.text
+    if chunk_method_for(chunk_tier) == "context":
+        from pipeline.chunk_context import situation_sentence
+
+        sentence = situation_sentence(chunk.headings, chunk.text)
+        if sentence:
+            body = f"{sentence}\n{chunk.text}"
+    return f"{_PASSAGE_PREFIX}{body}"
 
 
 def _to_vector(text: str) -> list[float]:
@@ -291,24 +258,3 @@ def _to_vectors(texts: list[str]) -> list[list[float]]:
             f"Expected embeddings shape {(len(texts), expected)}, got {array.shape}"
         )
     return array.tolist()
-
-
-def _build_metadata(chunk: Chunk) -> dict[str, str | int]:
-    """Build the ChromaDB metadata dict for a chunk.
-
-    ChromaDB metadata values must be strings, integers, floats or booleans.
-    The headings list is serialised as a JSON array because ChromaDB does
-    not support list values. Deserialise with json.loads at retrieval time.
-
-    Args:
-        chunk: Source chunk to extract metadata from.
-
-    Returns:
-        Flat metadata dict compatible with ChromaDB's type constraints.
-    """
-    return {
-        "source": chunk.source,
-        "page": chunk.page,
-        "chunk_index": chunk.chunk_index,
-        "headings": json.dumps(chunk.headings),
-    }

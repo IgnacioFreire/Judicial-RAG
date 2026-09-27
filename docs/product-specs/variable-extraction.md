@@ -37,7 +37,7 @@ The system MUST instruct the model according to the saved question type. Extract
 - **AND** it is told to mark the answer inferred
 
 ### Requirement: Citation
-When the model names a supporting fragment, the system SHALL show that fragment with a page number and a similarity score between 0 and 1. The page and the score MUST come from the highest-ranked retrieved fragment for that question.
+When the model names a supporting fragment, the system SHALL show that fragment with a page number and a similarity score between 0 and 1. The page and the score MUST come from the highest-ranked retrieved fragment for that question. Which fragments are retrieved is specified in [`retrieval.md`](retrieval.md).
 
 #### Scenario: Cited answer
 - **WHEN** the model returns a citation string and at least one fragment was retrieved
@@ -79,7 +79,7 @@ The system MUST answer only PDFs indexed successfully in the current run. A PDF 
 - **THEN** results contain only the PDF included in the second run
 
 ### Requirement: Run and progress
-The system SHALL enable a run only when at least one PDF is accepted, a schema is saved, and no run is in progress. During a run it MUST show progress and MUST disable upload, schema edits, run, and reset.
+The system SHALL enable a run only when at least one PDF is accepted, a schema is saved, and no run is in progress. During a run it MUST show progress (`stage`, `source`, `message`, `current`, `total`) and MUST disable upload, schema edits, run, and reset. A hard pipeline exception MUST surface as an error, not as a silent empty result list.
 
 #### Scenario: Ready to run
 - **WHEN** an accepted PDF and a saved schema are both present and nothing is running

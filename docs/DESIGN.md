@@ -2,21 +2,22 @@
 
 Layout and copy only. Upload, save, run, reset, and results behave as specified in [`product-specs/`](product-specs/index.md). Do not restate those rules here.
 
-One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify variables from judicial PDF documents."
+One dashboard shell. Title `⚖️ Judicial RAG`. Caption: "Extract and classify variables from judicial PDF documents."
 
 ```
-┌ sidebar ───────────────┬ body ───────────────────────────┐
-│ Upload documents       │ Run pipeline          Reset     │
-│ [PDF, multiple]        │ progress / error / success      │
-│ Define questions       │ Results                         │
-│ editors + categories   │ one expander per PDF            │
-│ Add question           │                                 │
-│ Save schema            │                                 │
-│ Advanced settings      │                                 │
-│ Parser                 │                                 │
-│ Chunking               │                                 │
+┌ nav ───────────────────┬ page ───────────────────────────┐
+│ Overview               │ the selected route              │
+│ Documents              │                                 │
+│ Settings               │ profile popover in the header  │
 └────────────────────────┴─────────────────────────────────┘
 ```
+
+| Route | Contents |
+|---|---|
+| Overview | Caption, metric cards, Run pipeline, Reset, recent PDFs |
+| Documents | Upload, table of name, status, accepted time, finished time |
+| Document | Status, times, and that PDF's answers |
+| Settings | Define questions, Save schema, Advanced settings, read-only question types |
 
 ## Copy
 
@@ -32,16 +33,20 @@ One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify var
 | Medium option | `Medium — docling` |
 | Slow option | `Slow — marker` |
 | Chunking tier | `Chunking` |
-| Fast chunk option | `Fast — page` |
+| Fast chunk option | `Fast — window` |
 | Medium chunk option | `Medium — hybrid` |
-| Slow chunk option | `Slow — fine` |
+| Slow chunk option | `Slow — context` |
+| Retrieval tier | `Retrieval` |
+| Fast retrieval option | `Fast — dense` |
+| Medium retrieval option | `Medium — hybrid` |
+| Slow retrieval option | `Slow — rerank` |
 | Missing answer | `No answer found.` |
 | Direct provenance | `Extracted directly` |
 | Inferred provenance | `Inferred through reasoning` |
 
 Confidence badges: `high` green, `medium` orange, `low` red, `not_found` gray.
 
-Visible strings are English. A copy change is its own plan and touches the components under `app/components/` and `app/main.py` together.
+Visible strings are English. A copy change is its own plan and touches the components under `web/src/components/` together.
 
 ## Editor fields
 

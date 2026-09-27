@@ -54,7 +54,7 @@ def _schema() -> QuestionSchema:
 
 @pytest.fixture
 def mock_inference():
-    """Avoid the Hugging Face API while still writing Chroma."""
+    """Avoid the Hugging Face API while still writing the session index."""
     from unittest.mock import patch
 
     def _extract(texts, model=None):
@@ -88,7 +88,10 @@ async def test_second_run_answers_only_the_files_still_uploaded(
     answered: list[str] = []
 
     def fake_answer(
-        question: UserQuestion, session_id: str, source: str
+        question: UserQuestion,
+        session_id: str,
+        source: str,
+        embedding_tier: str = "fast",
     ) -> AgentAnswer:
         answered.append(source)
         return AgentAnswer(
@@ -100,8 +103,8 @@ async def test_second_run_answers_only_the_files_still_uploaded(
 
     monkeypatch.setattr("pipeline.orchestrator.answer_question", fake_answer)
 
-    from pipeline.embedder import get_collection
     from pipeline.orchestrator import run
+    from pipeline.vector_store import list_sources
 
     session_id = "session-current-batch"
     a = tmp_path / "a.pdf"
@@ -117,9 +120,7 @@ async def test_second_run_answers_only_the_files_still_uploaded(
     assert [item.document for item in second] == ["a.pdf"]
     assert answered == ["a.pdf"]
 
-    stored = get_collection(session_id).get(include=["metadatas"])
-    sources = {meta["source"] for meta in stored["metadatas"]}
-    assert sources == {"a.pdf"}
+    assert list_sources(session_id) == ["a.pdf"]
 
 
 @pytest.mark.asyncio
@@ -145,7 +146,10 @@ async def test_pdf_with_no_text_is_a_visible_failure(
     monkeypatch.setitem(sys.modules, "pipeline.extractor", fake_extractor)
 
     def fake_answer(
-        question: UserQuestion, session_id: str, source: str
+        question: UserQuestion,
+        session_id: str,
+        source: str,
+        embedding_tier: str = "fast",
     ) -> AgentAnswer:
         return AgentAnswer(
             question=question,

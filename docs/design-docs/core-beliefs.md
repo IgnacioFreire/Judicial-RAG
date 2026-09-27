@@ -15,7 +15,7 @@ Fix the boundaries. Inside them, the implementation may vary.
 1. What crosses packages is a model in `models/`. Validate with Pydantic at that boundary. Do not prescribe the library for an internal detail the model already expresses.
 2. Observable behavior lives only in [`../product-specs/`](../product-specs/index.md). Update that spec in the same change as the code. Do not copy the requirement into another doc.
 3. Dependencies follow [`../ARCHITECTURE.md`](../ARCHITECTURE.md). `app/` does not enter `pipeline/`. `pipeline/` does not enter `app/`.
-4. Do not add a dependency for a helper of a few lines, and do not reimplement Docling, Chroma, or the LLM client. A new library is named in the design and a person confirms it.
+4. Do not add a dependency for a helper of a few lines, and do not reimplement Docling, the vector store, or the LLM client. A new library is named in the design and a person confirms it.
 
 ## Judicial text does not spread
 

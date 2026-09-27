@@ -1,5 +1,7 @@
 # Supabase storage
 
+Closed 2026-09-27. PDF uploads in the Streamlit app still use a temp directory.
+
 ## Why
 
 The maintainer chose Supabase as the store for distinct users and durable sessions. The first slice is the PDF notebook: it reads the private bucket with one admin test account.
@@ -13,7 +15,7 @@ The maintainer chose Supabase as the store for distinct users and durable sessio
 
 ## Product spec
 
-No file under `docs/product-specs/` changes in this slice. The running app still matches [`../product-specs/document-upload.md`](../product-specs/document-upload.md) and [`../product-specs/session.md`](../product-specs/session.md). Those specs change in the same change that moves `app/` and `storage/`.
+No file under `docs/product-specs/` changes in this slice. The running app still matches [`../../product-specs/document-upload.md`](../../product-specs/document-upload.md) and [`../../product-specs/session.md`](../../product-specs/session.md). Those specs change in the same change that moves `app/` and `storage/`.
 
 ## Modules
 
@@ -41,4 +43,4 @@ No new tests. The notebook signs in to a private project.
 
 ## Close
 
-Do not move this file to `completed/` until the notebook reads the bucket and the decision docs match. The app migration stays open: it touches privacy, and it waits for another explicit yes before `app/` or `storage/` change.
+Closed. Notebooks 01–03 read the bucket. The vector index is [`supabase-vector-index.md`](supabase-vector-index.md). PDF uploads in the app stay in the temp directory.

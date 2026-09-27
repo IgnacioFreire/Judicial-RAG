@@ -1,47 +1,69 @@
 # Frontend
 
-Streamlit, one script. There is no router and no extra page.
+React (Vite) with four routes. FastAPI in `app/` is the only process that calls `pipeline.orchestrator.run`.
+
+| Path | Page |
+|---|---|
+| `/` | Overview: summary cards, run, reset, recent PDFs |
+| `/documents` | Upload and the document table |
+| `/documents/:name` | One PDF: status, times, answers when the run finished it |
+| `/settings` | Question editor, save schema, three tiers, read-only type list |
+
+`web/src/components/AppShell.tsx` is the sidebar and the profile popover. Pages live in `web/src/pages/`.
 
 | File | Role |
 |---|---|
-| `app/main.py` | `set_page_config`, logging, sidebar, Run and Reset, bridge to `pipeline.orchestrator.run` |
-| `app/session_state.py` | Sole owner of the `st.session_state` keys listed below |
-| `app/components/uploader.py` | `st.file_uploader`. Writes accepted files into `session.pdf_dir`. The size rule is in [`product-specs/document-upload.md`](product-specs/document-upload.md) |
-| `app/components/question_form.py` | Drafts and **Save schema** |
-| `app/components/results_viewer.py` | Expanders of `DocumentAnswers` |
-| `app/components/advanced_settings.py` | Sidebar expander for the parser tier |
+| `app/server.py` | Cookie session, `/api/*`, static `web/dist` |
+| `app/ui_state.py` | Schema, results, tiers, and one row per accepted PDF |
+| `services/llm_usage.py` | Generation token totals for the bound session |
+| `web/src/pages/Overview.tsx` | Summary and run |
+| `web/src/pages/Documents.tsx` | Upload and table |
+| `web/src/pages/DocumentDetail.tsx` | One PDF |
+| `web/src/pages/Settings.tsx` | Questions and tiers |
 
-## State keys
+## State
 
-In `app/session_state.py`:
+Server (cookie `jr_session`, HttpOnly, SameSite=Lax), in `app/ui_state.py`:
 
-| Key | Type | Initial value |
+| Field | Type | Initial |
 |---|---|---|
-| `session_id` | `str` UUID | New on first load. Reused across reruns |
 | `schema` | `QuestionSchema \| None` | `None` |
 | `results` | `list[DocumentAnswers] \| None` | `None` |
 | `is_processing` | `bool` | `False` |
-| `uploaded_files` | `list` | `[]` |
-| `run_errors` | `list[str]` | `[]`. Failure messages from the latest run. Shown again after the rerun that ends the run. Cleared on Reset and at the start of the next run |
-| `parser_tier` | `str` | `medium`. One of `fast`, `medium`, `slow`. Kept on Reset. The method names are in `config/parsers.py` |
-| `chunk_tier` | `str` | `medium`. One of `fast`, `medium`, `slow`. Kept on Reset. The method names are in `config/chunkers.py` |
+| `run_errors` | `list[str]` | `[]` |
+| `pipeline_error` | `str \| None` | `None` |
+| `parser_tier` | `str` | `medium` |
+| `chunk_tier` | `str` | `medium` |
+| `embedding_tier` | `str` | `fast` |
 
-Components use the accessors (`state.schema()`, `state.set_results()`, …). Do not add raw keys in `main.py` or in the viewer.
+`session_id` is the cookie. Accepted PDFs live in `storage` `Session.pdf_dir`. `GET /api/session` runs `cleanup_expired_sessions` then returns the view.
 
-Current exception: `question_form.py` stores drafts in `st.session_state["question_drafts"]`. Each draft and each category row has a stable `id`. Widget keys use that id, so removing a row does not reuse another row's widget state. A new editor field stays on that draft until **Save schema** builds a `UserQuestion`. Do not move the draft into `session_state.py` unless another component must read it.
+Drafts live only in `QuestionForm` until **Save schema**. They are not written to `localStorage`.
+
+## HTTP
+
+| Method | Path |
+|---|---|
+| `GET` | `/api/session` |
+| `PUT` | `/api/uploads` |
+| `PUT` | `/api/schema` |
+| `PATCH` | `/api/session/tiers` |
+| `GET` | `/api/documents` |
+| `GET` | `/api/documents/{name}` |
+| `GET` | `/api/profile` |
+| `POST` | `/api/run` (SSE: `stage`, `source`, `message`, `current`, `total`) |
+| `POST` | `/api/reset` |
+
+A second run while `is_processing` is 409. Run without PDFs or a saved schema is 400.
 
 ## Startup
 
-`main()` calls `state.init()` and `cleanup_expired_sessions()` on every rerun. `init()` creates the UUID if it is missing and ensures a `storage` `Session` with that id (`get_or_create_session`). A Streamlit rerun must not mint another UUID.
+`uv run python -m app` serves the API on port 8501. If `web/dist` exists, that process also serves the UI. Local UI iteration: `npm run dev` in `web/` (proxies `/api` to 8501).
 
-Run uses `asyncio.run(run(...))` because the Streamlit script is synchronous. When it finishes, the `finally` block clears `is_processing` and calls `st.rerun()`.
-
-## UI logging
-
-`main.py` sets the root logger to INFO and raises `docling`, `transformers`, `huggingface_hub`, `rapidocr`, `httpx`, and `chromadb` to WARNING. Do not lower that threshold to "see what the PDF said."
+Root logging is INFO. `docling`, `transformers`, `huggingface_hub`, `rapidocr`, `httpx`, `supabase`, `postgrest`, and `gotrue` stay at WARNING.
 
 ## What not to add here
 
-- Direct calls to Docling, Chroma, or `call_llm`.
+- Direct calls to Docling, the search index, or `call_llm` from `web/`.
 - A second page to manage schemas, without a spec.
 - Result state computed in the component instead of reading `DocumentAnswers`.

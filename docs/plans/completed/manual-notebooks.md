@@ -1,5 +1,7 @@
 # Manual notebooks
 
+Closed 2026-09-27. Notebooks 04–07 still read local PDFs; that leftover is not a new plan.
+
 ## Why
 
 The pipeline can be run only through Streamlit. There is no way to stop after extraction, retrieval, or one agent call and read the counts, the timings, and the mapped rows. These notebooks are a local harness for that. Each one exercises one process and prints how long it took and what it produced.
@@ -8,10 +10,10 @@ The pipeline can be run only through Streamlit. There is no way to stop after ex
 
 - It does not change extraction, retrieval, prompts, `QuestionType`, citation pages, or answer criteria.
 - It does not score legal correctness. A date format, a category, or a rounding rule stays in the operator's question, not in the notebook.
-- It does not persist Chroma, write case text to disk, or add an API.
-- It does not import Streamlit. Size checks repeat the 20 MB limit from [`../product-specs/document-upload.md`](../product-specs/document-upload.md) instead of importing `app/`.
+- It does not add its own store. Embedding writes the session index through `embed_document`, and the last cell deletes that session. It does not write case text into the git repository, or add an API.
+- It does not import Streamlit. Size checks repeat the 20 MB limit from [`../../product-specs/document-upload.md`](../../product-specs/document-upload.md) instead of importing `app/`.
 - It does not commit PDFs, notebook outputs, or a saved run that contains answers or citations.
-- It does not pay down a row in [`../tech-debt-tracker.md`](../tech-debt-tracker.md).
+- It does not pay down a row in [`../../tech-debt-tracker.md`](../../tech-debt-tracker.md).
 
 ## Product spec
 
@@ -19,7 +21,7 @@ No file under `docs/product-specs/` changes. The notebooks call the public funct
 
 ## Dependency
 
-Add `jupyter` and `supabase` to the `dev` group in `pyproject.toml`. Do not add pandas. Tables are plain text built in `notebooks/helpers.py`. The Supabase client is used by `notebooks/01_pdfs.ipynb` and `notebooks/02_extraction.ipynb`.
+Add `jupyter` and `supabase` to the `dev` group in `pyproject.toml`. Do not add pandas. Tables are plain text built in `notebooks/helpers.py`. The Supabase client is used by `notebooks/01_pdfs.ipynb`, `notebooks/02_extraction.ipynb`, and `notebooks/03_embedding.ipynb`.
 
 Launch with:
 
@@ -34,7 +36,7 @@ uv run jupyter lab notebooks
 
 Notebooks may show chunk text, answers, and citations on the operator's machine. That display is off unless the operator sets `SHOW_TEXT = True` in that notebook.
 
-`notebooks/01_pdfs.ipynb` and `notebooks/02_extraction.ipynb` sign in to Supabase as the admin test user and read the private `pdfs` bucket. Credentials stay in `.env`. The PDF notebook prints names, sizes, and byte counts. The extraction notebook downloads accepted PDFs into a temporary directory because `extract` needs a path, then deletes those files in its last cell. Neither notebook prints PDF text unless the operator sets `SHOW_TEXT` in the extraction notebook, and neither writes the files into the repo.
+`notebooks/01_pdfs.ipynb`, `notebooks/02_extraction.ipynb`, and `notebooks/03_embedding.ipynb` sign in to Supabase as the admin test user and read the private `pdfs` bucket. Credentials stay in `.env`. The PDF notebook prints names, sizes, and byte counts. The extraction and embedding notebooks download accepted PDFs into a temporary directory because `extract` needs a path, then delete those files in the last cell. Those notebooks do not print PDF text unless the operator sets `SHOW_TEXT`, and they do not write the files into the repo.
 
 Committed notebooks have empty outputs and a null execution count. `.gitignore` ignores `.ipynb_checkpoints/` and everything under `notebooks/inputs/` except `.gitkeep`. PDFs stay out of git. Do not paste a ruling into a notebook cell, a fixture, or this plan.
 
@@ -42,7 +44,7 @@ KPI rows store counts, filenames, durations, confidence, and answer source. They
 
 ## Kernel
 
-Chroma is in memory and dies with the kernel. Notebooks do not share an index. Each notebook that needs an earlier stage runs that stage itself in a setup section. Setup time is printed apart from the stage under test.
+The index is Supabase, scoped by the notebook's session id. Notebooks do not share an index. Each notebook that needs an earlier stage runs that stage itself in a setup section. Setup time is printed apart from the stage under test.
 
 Each notebook creates its own collection name, `nb-` plus a UUID, and deletes that collection in the last cell. It never uses another session's collection.
 
@@ -59,7 +61,7 @@ Each notebook creates its own collection name, `nb-` plus a UUID, and deletes th
 | `timed(name)` | Context manager. Records the name and `time.perf_counter` duration in seconds. |
 | `preview(text, enabled)` | Returns a character count when `enabled` is false and the text when it is true. |
 | `result_rows(results)` | One dict per answer: document, label, question type, confidence, answer source, citation page, citation score, citation source, citation character count. Omits answer text and citation text. |
-| `answered_counts(results)` | Per document, the count of answers whose confidence is not `not_found`, and the total. Same rule as `app/components/results_viewer.py`. |
+| `answered_counts(results)` | Per document, the count of answers whose confidence is not `not_found`, and the total. Same rule as `web/src/components/ResultsViewer.tsx`. |
 | `phase_durations(events)` | From progress events stamped by the KPI notebook: phase 1 is the first `extracting` event until the first `answering` event; phase 2 is the first `answering` event until `complete`. Per question, the gap from that question's `answering` event to the next event. Phase 1 PDFs run concurrently, so this is wall time, not a sum of per-PDF times. |
 | `kpi_summary(results, failures, durations)` | Counts: PDFs indexed, PDFs failed, questions, answers, confidence histogram, direct, inferred, rows with a citation, not-found rate. Plus the durations above. |
 
@@ -67,7 +69,7 @@ Each notebook creates its own collection name, `nb-` plus a UUID, and deletes th
 
 ## Notebooks
 
-`02_extraction.ipynb` reads the same private bucket as `01_pdfs.ipynb`. Notebooks `03` through `07` still read local files from `NOTEBOOK_PDF_DIR`, or from `notebooks/inputs/` when that variable is unset. The operator puts local PDFs there. The question cell is a template: one `UserQuestion` of type `extraction` with a generic label and instruction. The operator replaces it before running retrieval, the agent, results, or KPIs. The template is not a legal rule.
+`02_extraction.ipynb` and `03_embedding.ipynb` read the same private bucket as `01_pdfs.ipynb`. Notebooks `04` through `07` still read local files from `NOTEBOOK_PDF_DIR`, or from `notebooks/inputs/` when that variable is unset. The operator puts local PDFs there. The question cell is a template: one `UserQuestion` of type `extraction` with a generic label and instruction. The operator replaces it before running retrieval, the agent, results, or KPIs. The template is not a legal rule.
 
 ### `notebooks/01_pdfs.ipynb`
 
@@ -80,17 +82,17 @@ Cells:
 3. Print the accepted count, the rejected count, and the duration of the listing.
 4. Download each accepted object into memory and print its name and byte count.
 
-No Docling. The bytes are discarded after the count. `02_extraction.ipynb` reads the same bucket. Notebooks `03` through `07` do not.
+No Docling. The bytes are discarded after the count. `02_extraction.ipynb` and `03_embedding.ipynb` read the same bucket. Notebooks `04` through `07` do not.
 
 ### `notebooks/02_extraction.ipynb`
 
-Process: `pipeline.extractor.extract` on each accepted PDF from the private bucket, once per parser tier and chunk tier. The default lists are the keys of `config/parsers.py` and `config/chunkers.py`.
+Process: `pipeline.extractor.extract` on each accepted PDF from the private bucket, once per parser tier. Chunking stays at the default, medium. The default parser list is the keys of `config/parsers.py`.
 
 Cells:
 
-1. Setup: `download_supabase_pdfs` into a temporary directory. Time this separately. Print each selected parser tier and chunk tier with its method.
-2. For each parser tier, chunk tier, and path, `await extract(path, tier=tier, chunk_tier=chunk_tier)` inside `timed("extract")`.
-3. Print parser tier, chunk tier, chunk method, filename, `total_pages`, `total_chunks`, heading count, and min, median, and max characters per chunk.
+1. Setup: `download_supabase_pdfs` into a temporary directory. Time this separately. Print each selected parser tier with its method.
+2. For each parser tier and path, `await extract(path, tier=tier)` inside `timed("extract")`.
+3. Print parser tier, method, filename, `total_pages`, `total_chunks`, heading count, and min, median, and max characters per chunk.
 4. Optional: with `SHOW_TEXT`, print one chunk's page, headings, and text.
 5. Delete the temporary directory.
 
@@ -98,14 +100,19 @@ A PDF that raises is printed as a failure with the exception type and message, a
 
 ### `notebooks/03_embedding.ipynb`
 
-Process: `pipeline.embedder.embed_document`.
+Process: `pipeline.extractor.extract` once per chunk tier, then `pipeline.embedder.embed_document`. The parser stays the default, medium. The default chunk list is the keys of `config/chunkers.py`. Each chunk tier uses its own collection so a later tier does not replace an earlier filename.
 
 Cells:
 
-1. Setup: extract each accepted PDF. Time as setup.
-2. `new_session_id()`, then `await embed_document(document, session_id)` per successful `DocumentResult`, each inside `timed("embed")`.
-3. Print filename, chunk count, `list_sources(session_id)`, and the embed duration.
-4. Last cell: `delete_collection(session_id)`.
+1. Setup: `download_supabase_pdfs` into a temporary directory. Time this separately. Print each selected chunk tier with its method and collection id.
+2. For each chunk tier and path, `await extract(path, chunk_tier=chunk_tier)` inside `timed("extract")`.
+3. Print chunk tier, chunk method, filename, `total_pages`, `total_chunks`, heading count, and min, median, and max characters per chunk.
+4. Optional: with `SHOW_TEXT`, print one chunk's page, headings, and text.
+5. `await embed_document(document, sessions[chunk_tier], chunk_tier=chunk_tier)` per successful `DocumentResult`, each inside `timed("embed")`.
+6. Print chunk tier, chunk method, filename, chunk count, `list_sources`, and the embed duration.
+7. Last cell: `delete_collection` for each chunk-tier session, then delete the temporary directory.
+
+A PDF that raises is printed as a failure with the exception type and message, and the loop continues. A PDF with zero chunks is printed as a failure and is not embedded. The first slow chunk run sends each chunk to the configured LLM.
 
 ### `notebooks/04_retrieval.ipynb`
 

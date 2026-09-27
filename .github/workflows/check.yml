@@ -10,11 +10,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Install
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install Python
         run: uv sync --group dev --frozen
-      - name: Lint
+      - name: Install UI
+        run: npm ci
+        working-directory: web
+      - name: Lint Python
         run: uv run ruff check .
-      - name: Format
+      - name: Format Python
         run: uv run ruff format --check .
+      - name: Lint UI
+        run: npm run lint
+        working-directory: web
+      - name: Build UI
+        run: npm run build
+        working-directory: web
       - name: Test
         run: uv run pytest

@@ -4,9 +4,12 @@ Behavior a person can rely on. A change to it is a plan in [`../plans/`](../plan
 
 | Spec | What it covers |
 |---|---|
-| [`document-upload.md`](document-upload.md) | PDF upload, the 20 MB limit, and the parser and chunk tiers |
+| [`document-upload.md`](document-upload.md) | PDF upload, the 20 MB limit, and the parser tier |
+| [`chunking.md`](chunking.md) | How a PDF is split before it is embedded |
+| [`retrieval.md`](retrieval.md) | How a question finds fragments in one PDF |
 | [`question-schema.md`](question-schema.md) | Save rules, the four question types, schema lifetime |
 | [`variable-extraction.md`](variable-extraction.md) | One row per question, citations, batch failures |
-| [`session.md`](session.md) | Isolation and session lifetime |
+| [`session.md`](session.md) | Isolation, session lifetime, and which tiers Reset keeps |
+| [`workspace.md`](workspace.md) | Overview, document list, settings, and the profile popover |
 
 Checked against the code on 2026-09-27.

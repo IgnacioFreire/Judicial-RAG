@@ -18,11 +18,11 @@ Phase 1 runs per PDF, capped by `MAX_PARALLEL_PDFS` (default 4, minimum 1, maxim
 
 ## Session clock
 
-`SESSION_TIMEOUT_MINUTES` is an integer from 5 to 1440. The default and the fact that the clock starts at creation are requirements in [`product-specs/session.md`](product-specs/session.md). `cleanup_expired_sessions` runs at the start of each Streamlit rerun. `tempfile.TemporaryDirectory` also removes the upload directory when the process exits.
+`SESSION_TIMEOUT_MINUTES` is an integer from 5 to 1440. The default and the fact that the clock starts at creation are requirements in [`product-specs/session.md`](product-specs/session.md). `cleanup_expired_sessions` runs at the start of each `GET /api/session`. It deletes tracked sessions from their creation time, then deletes index rows first stored before that same timeout. A failed index sweep is logged and the page still loads. `tempfile.TemporaryDirectory` removes the upload directory when the process exits. The index rows do not.
 
 ## Model budget
 
-Retrieval asks for 5 chunks per question. Generation uses `max_tokens=4096` in `services/llm_client.py`. There is no wall-clock budget and no cost budget per run.
+Retrieval asks for 5 chunks per question. Medium and slow retrieval first fuse a shortlist of up to 30. Slow retrieval then loads `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` on first use. Slow chunking sends each chunk to the configured LLM once at index time. Generation uses `max_tokens=4096` in `services/llm_client.py`. There is no wall-clock budget and no cost budget per run.
 
 ## Absent metrics
 

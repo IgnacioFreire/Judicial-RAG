@@ -37,7 +37,8 @@ Detail is in [`docs/plans/README.md`](docs/plans/README.md).
 
 ```bash
 uv sync --group dev
-uv run streamlit run app/main.py
+uv run python -m app
+cd web && npm install && npm run dev
 uv run pytest
 uv run pytest --cov=pipeline --cov-report=term-missing
 uv run ruff check .
@@ -58,4 +59,4 @@ Copy `.env.example` to `.env`. Do not commit `.env` or `*.pdf`. Local app: `http
 
 Ask before adding a dependency, changing what a `QuestionType` means, relaxing session isolation, logging document text, or skipping the cycle on a behavior change.
 
-Never commit `.env` or PDFs. Never paste case text into docs, logs, specs, or plans. Never read or write another session's Chroma collection. Never treat a legal rule as true unless it is in a spec or in the user's schema.
+Never commit `.env` or PDFs. Never paste case text into docs, logs, specs, or plans. Never read or write another session's index. Never treat a legal rule as true unless it is in a spec or in the user's schema.
