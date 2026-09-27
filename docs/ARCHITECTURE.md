@@ -91,4 +91,4 @@ The decided store for users, sessions, PDF bytes, and the vector index is one Su
 
 ## UI
 
-One React screen (`web/src/App.tsx`) served by FastAPI (`app/server.py`). Sidebar: upload and the question editor. Body: run, reset, results. Server fields live in `app/ui_state.py`. Editor drafts live in `QuestionForm` until save. Detail is in [`FRONTEND.md`](FRONTEND.md).
+Four React routes behind one shell (`web/src/components/AppShell.tsx`): overview, documents, document detail, settings. FastAPI (`app/server.py`) owns the session cookie, the document rows, and the profile read. Detail is in [`FRONTEND.md`](FRONTEND.md). Behavior of those screens is in [`product-specs/workspace.md`](product-specs/workspace.md).

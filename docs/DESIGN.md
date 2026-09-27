@@ -2,19 +2,22 @@
 
 Layout and copy only. Upload, save, run, reset, and results behave as specified in [`product-specs/`](product-specs/index.md). Do not restate those rules here.
 
-One wide dashboard screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify variables from judicial PDF documents."
-
-The shell follows a finance-dashboard layout (dark workspace sidebar, light overview, metric cards). It is still a single page: no extra routes.
+One dashboard shell. Title `⚖️ Judicial RAG`. Caption: "Extract and classify variables from judicial PDF documents."
 
 ```
-┌ dark sidebar ──────────┬ light body ─────────────────────┐
-│ brand                  │ Overview + caption              │
-│ Upload documents       │ metric cards                    │
-│ Define questions       │ Run pipeline          Reset     │
-│ Advanced settings      │ progress / error / success      │
-│                        │ Results                         │
+┌ nav ───────────────────┬ page ───────────────────────────┐
+│ Overview               │ the selected route              │
+│ Documents              │                                 │
+│ Settings               │ profile popover in the header  │
 └────────────────────────┴─────────────────────────────────┘
 ```
+
+| Route | Contents |
+|---|---|
+| Overview | Caption, metric cards, Run pipeline, Reset, recent PDFs |
+| Documents | Upload, table of name, status, accepted time, finished time |
+| Document | Status, times, and that PDF's answers |
+| Settings | Define questions, Save schema, Advanced settings, read-only question types |
 
 ## Copy
 

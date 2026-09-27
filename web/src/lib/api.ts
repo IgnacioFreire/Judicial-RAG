@@ -1,4 +1,11 @@
-import type { QuestionDraft, RunEvent, SessionView } from "@/lib/types"
+import type {
+  DocumentDetail,
+  DocumentRow,
+  ProfileView,
+  QuestionDraft,
+  RunEvent,
+  SessionView,
+} from "@/lib/types"
 
 const jsonHeaders = { "Content-Type": "application/json" }
 
@@ -66,6 +73,24 @@ export function saveTiers(body: {
     headers: jsonHeaders,
     body: JSON.stringify(body),
   }).then((r) => parse<SessionView>(r))
+}
+
+export function loadDocuments(): Promise<DocumentRow[]> {
+  return fetch("/api/documents", { credentials: "include" }).then((r) =>
+    parse<DocumentRow[]>(r),
+  )
+}
+
+export function loadDocument(name: string): Promise<DocumentDetail> {
+  return fetch(`/api/documents/${encodeURIComponent(name)}`, {
+    credentials: "include",
+  }).then((r) => parse<DocumentDetail>(r))
+}
+
+export function loadProfile(): Promise<ProfileView> {
+  return fetch("/api/profile", { credentials: "include" }).then((r) =>
+    parse<ProfileView>(r),
+  )
 }
 
 export function resetSession(): Promise<SessionView> {

@@ -19,6 +19,7 @@ from config.chunkers import DEFAULT_CHUNK_TIER, chunk_method_for
 from config.settings import settings
 from models.document import Chunk, DocumentResult
 from pipeline.index_store import IndexRow, get_index
+from services.llm_usage import bind, unbind
 
 logger = logging.getLogger(__name__)
 
@@ -157,22 +158,26 @@ def _embed_sync(
         session_id: User session identifier for isolation.
     """
     chunks = document.chunks
-    delete_source(session_id, document.metadata.filename)
-    if not chunks:
-        logger.warning("No chunks to embed for %s", document.metadata.filename)
-        return
+    token = bind(session_id)
+    try:
+        delete_source(session_id, document.metadata.filename)
+        if not chunks:
+            logger.warning("No chunks to embed for %s", document.metadata.filename)
+            return
 
-    total = len(chunks)
-    for start in range(0, total, _BATCH_SIZE):
-        batch = chunks[start : start + _BATCH_SIZE]
-        logger.debug(
-            "Embedding batch %d-%d / %d for %s",
-            start + 1,
-            start + len(batch),
-            total,
-            document.metadata.filename,
-        )
-        _upsert_batch(session_id, batch, chunk_tier)
+        total = len(chunks)
+        for start in range(0, total, _BATCH_SIZE):
+            batch = chunks[start : start + _BATCH_SIZE]
+            logger.debug(
+                "Embedding batch %d-%d / %d for %s",
+                start + 1,
+                start + len(batch),
+                total,
+                document.metadata.filename,
+            )
+            _upsert_batch(session_id, batch, chunk_tier)
+    finally:
+        unbind(token)
 
 
 def _upsert_batch(

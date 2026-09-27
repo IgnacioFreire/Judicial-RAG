@@ -7,6 +7,7 @@ import logging
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -17,15 +18,25 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.schema_drafts import QuestionDraft, SchemaBuildError, build_schema
-from app.ui_state import UiState, get_or_create_ui, reset_run_fields
+from app.ui_state import (
+    UiState,
+    close_run,
+    get_or_create_ui,
+    mark_queued,
+    note_progress,
+    reset_run_fields,
+    sync_accepted,
+)
 from config.chunkers import CHUNK_TIERS
 from config.embeddings import EMBEDDING_TIERS
 from config.parsers import PARSER_TIERS
+from config.settings import settings
 from models.query import DocumentAnswers
 from pipeline.orchestrator import ProgressEvent, Stage, run
+from services.llm_usage import bind, clear, totals, unbind
 from storage.cleanup import cleanup_expired_sessions
 from storage.session_manager import get_or_create_session
-from storage.uploads import MAX_BYTES, MAX_MB, store_uploads
+from storage.uploads import MAX_BYTES, MAX_MB, file_name, store_uploads
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +98,35 @@ class TierPatch(BaseModel):
     parser_tier: str | None = None
     chunk_tier: str | None = None
     embedding_tier: str | None = None
+
+
+class ProfileView(BaseModel):
+    email: str
+    llm_provider: str
+    llm_model: str
+    llm_key_configured: bool
+    embedding_provider: str
+    embedding_model: str
+    huggingface_key_configured: bool
+    input_tokens: int
+    output_tokens: int
+
+
+class DocumentListItem(BaseModel):
+    name: str
+    status: str
+    accepted_at: str
+    started_at: str | None = None
+    finished_at: str | None = None
+
+
+class DocumentDetail(BaseModel):
+    name: str
+    status: str
+    accepted_at: str
+    started_at: str | None = None
+    finished_at: str | None = None
+    answers: DocumentAnswers | None = None
 
 
 class RunEvent(BaseModel):
@@ -189,6 +229,32 @@ def _view(session_id: str, state: UiState) -> SessionView:
     )
 
 
+def _iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat()
+
+
+def _row_item(row) -> DocumentListItem:
+    return DocumentListItem(
+        name=row.name,
+        status=row.status,
+        accepted_at=row.accepted_at.isoformat(),
+        started_at=_iso(row.started_at),
+        finished_at=_iso(row.finished_at),
+    )
+
+
+def _active_llm_key_set() -> bool:
+    keys = {
+        "anthropic": settings.anthropic_api_key,
+        "openai": settings.openai_api_key,
+        "gemini": settings.gemini_api_key,
+        "deepseek": settings.deepseek_api_key,
+    }
+    return bool(keys.get(settings.llm_provider, ""))
+
+
 @app.get("/api/session")
 def get_session(request: Request) -> JSONResponse:
     session_id, is_new = _bind(request)
@@ -222,6 +288,7 @@ async def put_uploads(
             continue
         accepted.append((name, data))
     paths = store_uploads(session.pdf_dir, accepted)
+    sync_accepted(state, [path.name for path in paths])
     return _json(
         UploadView(
             accepted_files=[path.name for path in paths],
@@ -280,6 +347,7 @@ def post_reset(request: Request) -> JSONResponse:
     session = get_or_create_session(session_id)
     store_uploads(session.pdf_dir, [])
     reset_run_fields(state)
+    clear(session_id)
     return _json(_view(session_id, state), session_id, is_new)
 
 
@@ -304,12 +372,14 @@ async def post_run(request: Request) -> StreamingResponse:
     parser_tier = state.parser_tier
     chunk_tier = state.chunk_tier
     embedding_tier = state.embedding_tier
+    mark_queued(state, [path.name for path in pdf_paths])
 
     queue: asyncio.Queue[RunEvent] = asyncio.Queue()
 
     def on_progress(event: ProgressEvent) -> None:
         if event.stage == Stage.ERROR:
             state.run_errors.append(event.message)
+        note_progress(state, event.stage.value, event.source)
         queue.put_nowait(
             RunEvent(
                 type="progress",
@@ -322,6 +392,7 @@ async def post_run(request: Request) -> StreamingResponse:
         )
 
     async def work() -> None:
+        token = bind(session_id)
         try:
             results = await run(
                 pdf_paths=pdf_paths,
@@ -333,6 +404,7 @@ async def post_run(request: Request) -> StreamingResponse:
                 embedding_tier=embedding_tier,
             )
             state.results = results
+            close_run(state, {item.document for item in results})
             state.success_message = f"Done — {len(results)} document(s) processed."
             logger.info("Pipeline complete: %d documents", len(results))
             await asyncio.sleep(0)
@@ -349,12 +421,14 @@ async def post_run(request: Request) -> StreamingResponse:
         except Exception as exc:
             logger.exception("Pipeline failed")
             state.pipeline_error = f"Pipeline failed: {exc}"
+            close_run(state, set())
             await queue.put(
                 RunEvent(
                     type="failed", stage=Stage.ERROR.value, message=state.pipeline_error
                 )
             )
         finally:
+            unbind(token)
             state.is_processing = False
 
     async def events() -> AsyncIterator[str]:
@@ -371,6 +445,70 @@ async def post_run(request: Request) -> StreamingResponse:
     stream = StreamingResponse(events(), media_type="text/event-stream")
     _set_cookie(stream, session_id, is_new)
     return stream
+
+
+def _safe_name(name: str) -> str | None:
+    cleaned = file_name(name)
+    if not cleaned or cleaned in {".", ".."} or cleaned != name:
+        return None
+    return cleaned
+
+
+@app.get("/api/documents")
+def get_documents(request: Request) -> JSONResponse:
+    session_id, is_new = _bind(request)
+    state = get_or_create_ui(session_id)
+    rows = [_row_item(row) for row in state.documents.values()]
+    rows.sort(key=lambda row: row.accepted_at)
+    return _json_list(rows, session_id, is_new)
+
+
+@app.get("/api/documents/{name}")
+def get_document(name: str, request: Request) -> JSONResponse:
+    session_id, is_new = _bind(request)
+    safe = _safe_name(name)
+    state = get_or_create_ui(session_id)
+    row = state.documents.get(safe) if safe else None
+    if row is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    answers = None
+    for doc in state.results or []:
+        if doc.document == row.name:
+            answers = doc
+            break
+    detail = DocumentDetail(
+        name=row.name,
+        status=row.status,
+        accepted_at=row.accepted_at.isoformat(),
+        started_at=_iso(row.started_at),
+        finished_at=_iso(row.finished_at),
+        answers=answers,
+    )
+    return _json(detail, session_id, is_new)
+
+
+@app.get("/api/profile")
+def get_profile(request: Request) -> JSONResponse:
+    session_id, is_new = _bind(request)
+    input_tokens, output_tokens = totals(session_id)
+    profile = ProfileView(
+        email=settings.supabase_admin_email,
+        llm_provider=settings.llm_provider,
+        llm_model=settings.llm_model,
+        llm_key_configured=_active_llm_key_set(),
+        embedding_provider=settings.embedding_provider,
+        embedding_model=settings.embedding_model,
+        huggingface_key_configured=bool(settings.huggingface_api_key),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+    return _json(profile, session_id, is_new)
+
+
+def _json_list(rows: list[BaseModel], session_id: str, is_new: bool) -> JSONResponse:
+    response = JSONResponse([row.model_dump(mode="json") for row in rows])
+    _set_cookie(response, session_id, is_new)
+    return response
 
 
 @app.get("/api/health")

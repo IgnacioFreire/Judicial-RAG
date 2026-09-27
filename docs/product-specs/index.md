@@ -10,5 +10,6 @@ Behavior a person can rely on. A change to it is a plan in [`../plans/`](../plan
 | [`question-schema.md`](question-schema.md) | Save rules, the four question types, schema lifetime |
 | [`variable-extraction.md`](variable-extraction.md) | One row per question, citations, batch failures |
 | [`session.md`](session.md) | Isolation, session lifetime, and which tiers Reset keeps |
+| [`workspace.md`](workspace.md) | Overview, document list, settings, and the profile popover |
 
 Checked against the code on 2026-09-27.

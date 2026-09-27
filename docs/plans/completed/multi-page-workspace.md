@@ -1,6 +1,6 @@
 # Multi-page workspace
 
-Split the single screen into an overview, a document table with per-PDF status, a document detail, and a settings page. Add a profile popover that shows the server identity and session token counts. Keep the same extraction rules, session cookie, and key handling.
+Closed 2026-09-27. Overview, documents, document detail, settings, and a read-only profile popover.
 
 **Stop.** Do not add `react-router`, edit routes, or return secrets until a person confirms this plan. Showing or editing API keys, and letting the user rewrite the shared prompt templates, are not part of this plan. Those change privacy and answer criteria and need their own yes.
 

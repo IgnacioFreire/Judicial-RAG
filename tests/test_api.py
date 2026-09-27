@@ -134,6 +134,109 @@ def test_run_conflict_when_processing(client: TestClient) -> None:
     get_or_create_ui(session_id).is_processing = False
 
 
+def test_documents_start_ready_and_reset_clears_them(client: TestClient) -> None:
+    empty = client.get("/api/documents")
+    assert empty.status_code == 200
+    assert empty.json() == []
+    client.put("/api/uploads", files=[("files", ("a.pdf", b"a", "application/pdf"))])
+    listed = client.get("/api/documents").json()
+    assert listed[0]["name"] == "a.pdf"
+    assert listed[0]["status"] == "ready"
+    assert listed[0]["accepted_at"]
+    client.post("/api/reset")
+    assert client.get("/api/documents").json() == []
+
+
+def test_run_marks_failed_and_done(client: TestClient) -> None:
+    question = UserQuestion(
+        label="Date",
+        question="What is the date?",
+        question_type=QuestionType.EXTRACTION,
+    )
+    results = [
+        DocumentAnswers(
+            document="a.pdf",
+            answers=[
+                AgentAnswer(
+                    question=question,
+                    document="a.pdf",
+                    confidence=AnswerConfidence.NOT_FOUND,
+                )
+            ],
+        )
+    ]
+
+    async def fake_run(**kwargs):
+        on_progress = kwargs["on_progress"]
+        on_progress(
+            ProgressEvent(
+                stage=Stage.EXTRACTING,
+                source="a.pdf",
+                message="Extracting a.pdf",
+                current=1,
+                total=2,
+            )
+        )
+        on_progress(
+            ProgressEvent(
+                stage=Stage.ERROR,
+                source="bad.pdf",
+                message="bad.pdf was not processed",
+            )
+        )
+        return results
+
+    client.put("/api/schema", json=[_extraction_draft()])
+    client.put(
+        "/api/uploads",
+        files=[
+            ("files", ("a.pdf", b"a", "application/pdf")),
+            ("files", ("bad.pdf", b"b", "application/pdf")),
+        ],
+    )
+    with patch("app.server.run", new=AsyncMock(side_effect=fake_run)):
+        with client.stream("POST", "/api/run") as stream:
+            b"".join(stream.iter_bytes())
+    rows = {row["name"]: row for row in client.get("/api/documents").json()}
+    assert rows["bad.pdf"]["status"] == "failed"
+    assert rows["bad.pdf"]["finished_at"]
+    assert rows["a.pdf"]["status"] == "done"
+    assert rows["a.pdf"]["finished_at"]
+    detail = client.get("/api/documents/a.pdf")
+    assert detail.status_code == 200
+    assert detail.json()["answers"]["document"] == "a.pdf"
+
+
+def test_other_session_cannot_read_a_document() -> None:
+    owner = TestClient(app)
+    other = TestClient(app)
+    owner.put("/api/uploads", files=[("files", ("a.pdf", b"a", "application/pdf"))])
+    missing = other.get("/api/documents/a.pdf")
+    assert missing.status_code == 404
+
+
+def test_profile_does_not_return_the_key(client: TestClient) -> None:
+    import config.settings as settings_mod
+
+    secret = "test-secret-key-not-for-logs"
+    previous_provider = settings_mod.settings.llm_provider
+    previous_key = settings_mod._settings.deepseek_api_key
+    settings_mod._settings.deepseek_api_key = secret
+    settings_mod._settings.llm_provider = "deepseek"
+    try:
+        body = client.get("/api/profile")
+        assert body.status_code == 200
+        assert secret not in body.text
+        payload = body.json()
+        assert payload["llm_key_configured"] is True
+        assert payload["llm_provider"] == "deepseek"
+        assert "input_tokens" in payload
+        assert "output_tokens" in payload
+    finally:
+        settings_mod._settings.llm_provider = previous_provider
+        settings_mod._settings.deepseek_api_key = previous_key
+
+
 def test_run_sse_keeps_error_after_done(client: TestClient) -> None:
     question = UserQuestion(
         label="Date",

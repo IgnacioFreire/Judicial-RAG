@@ -1,20 +1,25 @@
 # Frontend
 
-React (Vite) on one screen. FastAPI in `app/` is the only process that calls `pipeline.orchestrator.run`. There is no router.
+React (Vite) with four routes. FastAPI in `app/` is the only process that calls `pipeline.orchestrator.run`.
+
+| Path | Page |
+|---|---|
+| `/` | Overview: summary cards, run, reset, recent PDFs |
+| `/documents` | Upload and the document table |
+| `/documents/:name` | One PDF: status, times, answers when the run finished it |
+| `/settings` | Question editor, save schema, three tiers, read-only type list |
+
+`web/src/components/AppShell.tsx` is the sidebar and the profile popover. Pages live in `web/src/pages/`.
 
 | File | Role |
 |---|---|
 | `app/server.py` | Cookie session, `/api/*`, static `web/dist` |
-| `app/ui_state.py` | Server fields that Streamlit kept in `st.session_state` |
-| `app/schema_drafts.py` | Save-schema validation |
-| `storage/uploads.py` | 20 MB rule and `store_uploads` |
-| `web/src/App.tsx` | Title, sidebar, run row, alerts, results |
-| `web/src/components/Uploader.tsx` | Multi-file PDF picker |
-| `web/src/components/QuestionForm.tsx` | Drafts and **Save schema** |
-| `web/src/components/QuestionEditor.tsx` | One draft and category rows |
-| `web/src/components/AdvancedSettings.tsx` | Parser, chunk, and retrieval tiers |
-| `web/src/components/RunBar.tsx` | Run, Reset, progress |
-| `web/src/components/ResultsViewer.tsx` | One expander per PDF |
+| `app/ui_state.py` | Schema, results, tiers, and one row per accepted PDF |
+| `services/llm_usage.py` | Generation token totals for the bound session |
+| `web/src/pages/Overview.tsx` | Summary and run |
+| `web/src/pages/Documents.tsx` | Upload and table |
+| `web/src/pages/DocumentDetail.tsx` | One PDF |
+| `web/src/pages/Settings.tsx` | Questions and tiers |
 
 ## State
 
@@ -43,6 +48,9 @@ Drafts live only in `QuestionForm` until **Save schema**. They are not written t
 | `PUT` | `/api/uploads` |
 | `PUT` | `/api/schema` |
 | `PATCH` | `/api/session/tiers` |
+| `GET` | `/api/documents` |
+| `GET` | `/api/documents/{name}` |
+| `GET` | `/api/profile` |
 | `POST` | `/api/run` (SSE: `stage`, `source`, `message`, `current`, `total`) |
 | `POST` | `/api/reset` |
 

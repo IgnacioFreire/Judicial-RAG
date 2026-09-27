@@ -44,6 +44,30 @@ export type SessionView = {
   max_upload_mb: number
 }
 
+export type DocumentRow = {
+  name: string
+  status: string
+  accepted_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export type DocumentDetail = DocumentRow & {
+  answers: DocumentAnswers | null
+}
+
+export type ProfileView = {
+  email: string
+  llm_provider: string
+  llm_model: string
+  llm_key_configured: boolean
+  embedding_provider: string
+  embedding_model: string
+  huggingface_key_configured: boolean
+  input_tokens: number
+  output_tokens: number
+}
+
 export type DocumentAnswers = {
   document: string
   answers: AgentAnswer[]
