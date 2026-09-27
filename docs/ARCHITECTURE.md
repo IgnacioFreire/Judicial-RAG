@@ -23,7 +23,7 @@ pipeline/rag_agent.py     prompt by QuestionType → services/llm_client.py
 models.query.DocumentAnswers
         │
         ▼
-app/                      Streamlit
+app/                      FastAPI + React (`web/`)
 ```
 
 `pipeline/orchestrator.py` is the only coordinator. Phase 1 extracts and embeds every PDF in the current upload together, and drops indexed filenames that are no longer in that upload. Phase 2 asks questions one after another, only for PDFs indexed in that run. What happens when a PDF or a question fails is specified in [`product-specs/variable-extraction.md`](product-specs/variable-extraction.md).
@@ -32,14 +32,14 @@ app/                      Streamlit
 
 | Package | Responsibility | Does not |
 |---|---|---|
-| `models/` | Pydantic contracts for documents and for questions and answers | I/O, network, Streamlit |
+| `models/` | Pydantic contracts for documents and for questions and answers | I/O, network, the UI |
 | `config/` | Settings from the environment (`settings.py`) and the tier maps (`parsers.py`, `chunkers.py`, `embeddings.py`) | Call the LLM or read PDFs |
 | `services/` | `llm_client.py` routes Anthropic, OpenAI, DeepSeek, and Gemini | Choose chunks or the question type |
 | `pipeline/` | Extract, index, search, and answer | Render UI or own the temp directory |
 | `storage/` | Per-session temp directory and expiry | Interpret PDF content |
-| `app/` | Streamlit: upload, schema, progress, results | Reimplement the pipeline |
+| `app/` | HTTP session, upload, schema, progress, results | Reimplement the pipeline |
 
-`app/main.py` is the Streamlit entry. Internal imports are absolute (`from pipeline...`, `from models...`). The package is installed by `uv sync`, so the script does not insert the repo root on `sys.path`.
+`app/main.py` exports the FastAPI app. Internal imports are absolute (`from pipeline...`, `from models...`). The package is installed by `uv sync`, so the process does not insert the repo root on `sys.path`. `web/` is the React screen and talks only to `/api`.
 
 ## Dependency direction
 
@@ -51,7 +51,7 @@ config ───────────── (no imports from this repo)
 services ─────────── config
 pipeline ─────────── models, config, services
 storage ──────────── config, pipeline.embedder
-app ──────────────── models, pipeline, storage, config, app.components
+app ──────────────── models, pipeline, storage, config
 tests ────────────── any package; production does not import tests
 ```
 
@@ -87,8 +87,8 @@ The exception is a search hit: `pipeline/vector_store.search` returns `list[dict
 
 ## State that is not in the repo
 
-The decided store for users, sessions, PDF bytes, and the vector index is one Supabase project ([`design-docs/supabase.md`](design-docs/supabase.md)). The search index is that project's `chunks` table (`pgvector`), described in [`../supabase/schema.sql`](../supabase/schema.sql). The Streamlit server signs in as the admin test user and scopes every read and write by `session_id`. PDF bytes still live in a `tempfile.TemporaryDirectory` per session (`storage/session_manager.py`) until that process exits or the session is cleaned up. Notebooks `01_pdfs.ipynb`, `02_extraction.ipynb`, and `03_embedding.ipynb` read the private `pdfs` bucket as the admin test user. Notebooks that embed write the same `chunks` table.
+The decided store for users, sessions, PDF bytes, and the vector index is one Supabase project ([`design-docs/supabase.md`](design-docs/supabase.md)). The search index is that project's `chunks` table (`pgvector`), described in [`../supabase/schema.sql`](../supabase/schema.sql). The HTTP server signs in as the admin test user and scopes every read and write by `session_id`. PDF bytes still live in a `tempfile.TemporaryDirectory` per session (`storage/session_manager.py`) until that process exits or the session is cleaned up. Notebooks `01_pdfs.ipynb`, `02_extraction.ipynb`, and `03_embedding.ipynb` read the private `pdfs` bucket as the admin test user. Notebooks that embed write the same `chunks` table.
 
 ## UI
 
-One Streamlit page (`app/main.py`). Sidebar: upload and the question editor. Body: run, reset, results. `st.session_state` keys live in `app/session_state.py`, with one exception: editor drafts live in `question_form.py` (`question_drafts`). Detail is in [`FRONTEND.md`](FRONTEND.md).
+Four React routes behind one shell (`web/src/components/AppShell.tsx`): overview, documents, document detail, settings. FastAPI (`app/server.py`) owns the session cookie, the document rows, and the profile read. Detail is in [`FRONTEND.md`](FRONTEND.md). Behavior of those screens is in [`product-specs/workspace.md`](product-specs/workspace.md).

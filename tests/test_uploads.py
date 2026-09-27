@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from app.components.uploader import store_uploads
+from storage.uploads import store_uploads
 
 
 def test_same_name_replaces_bytes(tmp_path: Path) -> None:

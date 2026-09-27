@@ -66,7 +66,7 @@ def cleanup_expired_sessions() -> int:
     Compares each session's created_at timestamp against the current UTC
     time. Sessions older than SESSION_TIMEOUT_MINUTES are cleaned up.
 
-    Called periodically by the Streamlit UI to prevent orphaned sessions
+    Called on `GET /api/session` to prevent orphaned sessions
     from accumulating on long-running deployments.
 
     Returns:

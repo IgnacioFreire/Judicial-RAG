@@ -29,8 +29,8 @@ A user should choose how a PDF is read: a fast text-layer pass, the current Docl
 | `pipeline/marker_parser.py` | Slow path. |
 | `pipeline/parsed_pages.py` | One chunk per non-empty page. |
 | `pipeline/orchestrator.py` | Pass the session tier into `extract`. |
-| `app/session_state.py` | Store `parser_tier`. Reset keeps it. |
-| `app/components/advanced_settings.py` | Sidebar control. |
+| `app/ui_state.py` | Store `parser_tier`. Reset keeps it. |
+| `web/src/components/AdvancedSettings.tsx` | Sidebar control (was Streamlit). |
 
 ## Tests
 

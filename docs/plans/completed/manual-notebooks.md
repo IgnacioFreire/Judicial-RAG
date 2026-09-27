@@ -61,7 +61,7 @@ Each notebook creates its own collection name, `nb-` plus a UUID, and deletes th
 | `timed(name)` | Context manager. Records the name and `time.perf_counter` duration in seconds. |
 | `preview(text, enabled)` | Returns a character count when `enabled` is false and the text when it is true. |
 | `result_rows(results)` | One dict per answer: document, label, question type, confidence, answer source, citation page, citation score, citation source, citation character count. Omits answer text and citation text. |
-| `answered_counts(results)` | Per document, the count of answers whose confidence is not `not_found`, and the total. Same rule as `app/components/results_viewer.py`. |
+| `answered_counts(results)` | Per document, the count of answers whose confidence is not `not_found`, and the total. Same rule as `web/src/components/ResultsViewer.tsx`. |
 | `phase_durations(events)` | From progress events stamped by the KPI notebook: phase 1 is the first `extracting` event until the first `answering` event; phase 2 is the first `answering` event until `complete`. Per question, the gap from that question's `answering` event to the next event. Phase 1 PDFs run concurrently, so this is wall time, not a sum of per-PDF times. |
 | `kpi_summary(results, failures, durations)` | Counts: PDFs indexed, PDFs failed, questions, answers, confidence histogram, direct, inferred, rows with a citation, not-found rate. Plus the durations above. |
 

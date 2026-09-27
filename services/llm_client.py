@@ -112,6 +112,7 @@ def _call_anthropic(prompt: str) -> str:
         message.usage.input_tokens,
         message.usage.output_tokens,
     )
+    _note(message.usage.input_tokens, message.usage.output_tokens)
     return message.content[0].text
 
 
@@ -138,6 +139,7 @@ def _call_openai(prompt: str) -> str:
         completion.usage.prompt_tokens,
         completion.usage.completion_tokens,
     )
+    _note(completion.usage.prompt_tokens, completion.usage.completion_tokens)
     return completion.choices[0].message.content or ""
 
 
@@ -172,6 +174,7 @@ def _call_openai_compatible(prompt: str) -> str:
         completion.usage.prompt_tokens,
         completion.usage.completion_tokens,
     )
+    _note(completion.usage.prompt_tokens, completion.usage.completion_tokens)
     return completion.choices[0].message.content or ""
 
 
@@ -180,6 +183,13 @@ def _call_openai_compatible(prompt: str) -> str:
 # ---------------------------------------------------------------------------
 # Defined after the functions they reference so the file reads top-down:
 # public API → implementations → configuration.
+
+
+def _note(input_tokens: int | None, output_tokens: int | None) -> None:
+    """Add one call to the bound session. Usage may be missing."""
+    from services.llm_usage import add_tokens
+
+    add_tokens(int(input_tokens or 0), int(output_tokens or 0))
 
 
 def _provider_credentials(provider: str) -> tuple[str, str]:

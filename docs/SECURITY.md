@@ -22,6 +22,6 @@ Do not paste real rulings. A fixture, if one is ever added, is synthetic or anon
 
 ## Surface
 
-The app listens on port 8501 inside the container, on `0.0.0.0`. The code has no authentication. Anyone who can open the Space can upload a PDF to that instance. Isolation is between sessions of the same process, not an authenticated user boundary.
+The app listens on port 8501 inside the container, on `0.0.0.0`. FastAPI serves `/api` and the built React files. The profile popover names the Supabase account and whether keys are configured. It does not return key values, the anon key, or the admin password. Isolation is the HttpOnly session cookie inside one process, not an authenticated user boundary.
 
-Do not add an endpoint, a webhook, or an external PDF store without a plan and a human confirmation. The PDF notebook is a confirmed reader of the private `pdfs` bucket. The search index is the confirmed writer of chunk text in `public.chunks`. Both use the admin test user from `.env`. Do not commit these values. The Streamlit app still has no end-user login.
+Do not add an endpoint, a webhook, or an external PDF store without a plan and a human confirmation. The PDF notebook is a confirmed reader of the private `pdfs` bucket. The search index is the confirmed writer of chunk text in `public.chunks`. Both use the admin test user from `.env`. Do not commit these values. The app still has no end-user login.

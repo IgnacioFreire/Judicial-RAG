@@ -5,8 +5,10 @@ description = "Sistema de extracción y clasificación de variables sobre docume
 requires-python = ">=3.11"
 
 dependencies = [
-    # UI
-    "streamlit>=1.35.0",
+    # HTTP UI
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.54.0",
+    "python-multipart>=0.0.32",
     # PDF extraction
     "docling>=2.0.0",
     "pymupdf4llm>=0.0.17",
@@ -24,6 +26,9 @@ dependencies = [
     "pydantic-settings>=2.3.0",
     # Environment variables
     "python-dotenv>=1.0.0",
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.54.0",
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]

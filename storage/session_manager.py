@@ -46,8 +46,7 @@ class Session:
 # ---------------------------------------------------------------------------
 # Module-level registry
 # ---------------------------------------------------------------------------
-# Maps session_id → Session for all active sessions. A plain dict is safe
-# here because Streamlit runs each user in a single thread.
+# Maps session_id → Session for all active sessions in this process.
 
 _sessions: dict[str, Session] = {}
 
@@ -103,12 +102,10 @@ def get_session(session_id: str) -> Session | None:
 def get_or_create_session(session_id: str) -> Session:
     """Retrieve an existing session or create a new one with the given ID.
 
-    Used by the Streamlit UI to restore a session after a page rerun.
-    Streamlit reruns the entire script on every interaction, so the session
-    must persist across reruns via st.session_state.
+    Used by the HTTP UI to restore a session from the session cookie.
 
     Args:
-        session_id: Unique session identifier stored in st.session_state.
+        session_id: Unique session identifier stored in the session cookie.
 
     Returns:
         Existing Session if found, otherwise a newly created one.

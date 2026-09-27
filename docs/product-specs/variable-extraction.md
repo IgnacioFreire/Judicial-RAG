@@ -79,7 +79,7 @@ The system MUST answer only PDFs indexed successfully in the current run. A PDF 
 - **THEN** results contain only the PDF included in the second run
 
 ### Requirement: Run and progress
-The system SHALL enable a run only when at least one PDF is accepted, a schema is saved, and no run is in progress. During a run it MUST show progress and MUST disable upload, schema edits, run, and reset.
+The system SHALL enable a run only when at least one PDF is accepted, a schema is saved, and no run is in progress. During a run it MUST show progress (`stage`, `source`, `message`, `current`, `total`) and MUST disable upload, schema edits, run, and reset. A hard pipeline exception MUST surface as an error, not as a silent empty result list.
 
 #### Scenario: Ready to run
 - **WHEN** an accepted PDF and a saved schema are both present and nothing is running

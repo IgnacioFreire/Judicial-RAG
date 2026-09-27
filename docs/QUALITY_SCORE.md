@@ -27,6 +27,7 @@ Scale used on 2026-09-26. Last grade pass 2026-09-27.
 | `config/chunkers.py` | A | The three chunk tiers map to window, hybrid, and context. Covered in `tests/test_parsers.py` |
 | `config/embeddings.py` | A | The three retrieval tiers map to dense, hybrid, and rerank. Covered in `tests/test_parsers.py` |
 | `storage/` | B | Session and deletion are implemented. Timeout is measured from `created_at`, as the session spec requires. No tests |
-| `app/` | B | The full path is usable. `tests/test_advanced_settings.py` covers the three Advanced settings selectors |
+| `app/` | B | HTTP session, upload, schema, tiers, run SSE, and reset are covered in `tests/test_api.py`. The long pipeline is mocked. |
+| `web/` | B | Four routes and a profile popover. Lint and production build run in CI. No browser tests. |
 | `docs/` | B | `tests/test_doc_links.py` checks relative links. Freshness is still updated in the same change as the code |
-| Delivery | B | GitHub Actions runs ruff and pytest on push and pull request |
+| Delivery | B | GitHub Actions runs ruff, pytest, and the web lint/build on push and pull request |

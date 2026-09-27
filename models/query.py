@@ -140,7 +140,7 @@ class UserQuestion(BaseModel):
 class QuestionSchema(BaseModel):
     """Full set of questions defined by a user for the current UI session.
 
-    Kept in Streamlit session state only. It is not written to disk and
+    Kept in the current UI session only. It is not written to disk and
     it is not restored in a new UI session.
 
     Attributes:

@@ -7,7 +7,7 @@ Accept the PDFs a person wants read in this session, and refuse files the pipeli
 ## Requirements
 
 ### Requirement: PDF upload
-The system SHALL accept one or more PDF files for the current session and SHALL make each accepted file available to a later run.
+The control is a multi-file PDF picker. The system SHALL accept one or more PDF files for the current session and SHALL make each accepted file available to a later run.
 
 #### Scenario: One or more PDFs
 - **WHEN** the user uploads one or more PDF files within the size limit
@@ -58,7 +58,7 @@ The system MUST replace the stored bytes when an accepted upload uses a name alr
 - **THEN** a later run reads the new bytes
 
 ### Requirement: File removed from the uploader
-The system MUST delete a PDF that is no longer in the uploader from the session directory. The next run MUST NOT answer it.
+The system MUST delete a PDF that is no longer in the current file selection from the session directory. The next run MUST NOT answer it.
 
 #### Scenario: One of two files removed
 - **WHEN** the user had two accepted PDFs and removes one from the uploader

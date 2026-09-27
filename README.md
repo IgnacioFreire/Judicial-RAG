@@ -8,7 +8,7 @@ Agent map: [`AGENTS.md`](AGENTS.md). Current behavior: [`docs/product-specs/`](d
 
 | Layer | Technology |
 |---|---|
-| UI | Streamlit |
+| UI | React (Vite + shadcn-style components) + FastAPI |
 | PDF extraction | Docling |
 | Embeddings | Hugging Face Inference API |
 | Vector store | Supabase pgvector (per session) |
@@ -24,11 +24,12 @@ judicial-rag/
 │
 ├── app/
 │   ├── main.py
-│   ├── components/
-│   │   ├── uploader.py
-│   │   ├── question_form.py
-│   │   └── results_viewer.py
-│   └── session_state.py
+│   ├── server.py
+│   ├── ui_state.py
+│   └── schema_drafts.py
+│
+├── web/
+│   └── src/
 │
 ├── pipeline/
 │   ├── orchestrator.py
@@ -74,6 +75,7 @@ judicial-rag/
 ## Prerequisites
 
 - Python 3.11+
+- Node.js 22+ (for the React UI)
 - [uv](https://docs.astral.sh/uv/) for dependency management
 - An API key for the active LLM provider (DeepSeek by default) and a Hugging Face token for embeddings
 
@@ -101,12 +103,23 @@ HUGGINGFACE_API_KEY=hf_...
 
 ## Usage
 
+Build the UI once, then start the server:
+
 ```bash
-# Start the application
-uv run streamlit run app/main.py
+cd web && npm install && npm run build && cd ..
+uv run python -m app
 ```
 
-The interface is at `http://localhost:8501`. What the screen does is specified in [`docs/product-specs/`](docs/product-specs/index.md).
+The interface is at `http://localhost:8501`.
+
+While changing the UI, run two processes:
+
+```bash
+uv run python -m app
+cd web && npm run dev
+```
+
+Then open `http://localhost:5173` (`/api` is proxied to port 8501). What the screen does is specified in [`docs/product-specs/`](docs/product-specs/index.md).
 
 Manual notebooks: [`notebooks/README.md`](notebooks/README.md).
 
