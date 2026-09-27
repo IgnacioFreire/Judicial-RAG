@@ -21,6 +21,7 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
 
+from config.parsers import DEFAULT_PARSER_TIER, method_for
 from config.settings import settings
 from models.document import Chunk, DocumentMetadata, DocumentResult
 
@@ -103,22 +104,38 @@ def _get_converter() -> DocumentConverter:
 # ---------------------------------------------------------------------------
 
 
-async def extract(pdf_path: Path) -> DocumentResult:
-    """Extract text and metadata from a digital PDF asynchronously.
+async def extract(
+    pdf_path: Path,
+    tier: str = DEFAULT_PARSER_TIER,
+) -> DocumentResult:
+    """Extract text and metadata from a PDF with the configured tier.
 
-    Offloads Docling's synchronous conversion to a thread pool so multiple
-    PDFs can be processed concurrently without blocking the event loop.
-    OCR is not applied.
+    Offloads the synchronous parser to a thread pool so multiple PDFs can
+    be processed concurrently without blocking the event loop. The medium
+    tier is Docling with OCR off. The fast tier reads the text layer. The
+    slow tier may OCR a region that has no usable text.
 
     Args:
         pdf_path: Absolute path to the PDF file.
+        tier: User setting. One of fast, medium, or slow.
 
     Returns:
         DocumentResult with all chunks and document metadata.
     """
-    logger.info("Queuing extraction: %s", pdf_path.name)
+    method = method_for(tier)
+    logger.info("Queuing extraction: %s (%s)", pdf_path.name, method)
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_pool(), _extract_sync, pdf_path)
+    if method == "docling":
+        return await loop.run_in_executor(_pool(), _extract_sync, pdf_path)
+    if method == "pymupdf4llm":
+        from pipeline.pymupdf_parser import extract_pymupdf
+
+        return await loop.run_in_executor(_pool(), extract_pymupdf, pdf_path)
+    if method == "marker":
+        from pipeline.marker_parser import extract_marker
+
+        return await loop.run_in_executor(_pool(), extract_marker, pdf_path)
+    raise RuntimeError(f"No parser is implemented for method '{method}'")
 
 
 # ---------------------------------------------------------------------------

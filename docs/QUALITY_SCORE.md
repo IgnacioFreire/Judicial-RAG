@@ -19,6 +19,7 @@ Scale used on 2026-09-26. Update it when a change moves a grade.
 | `pipeline/orchestrator.py` | B | Two phases, per-PDF and per-question failures contained. Tests cover which files a run answers |
 | `services/llm_client.py` | B | Four providers behind `call_llm`. No tests |
 | `config/settings.py` | B | Validates the active provider and its key. Chunk size is not a setting |
+| `config/parsers.py` | A | The three tiers map to the three methods. Covered in `tests/test_parsers.py` |
 | `storage/` | B | Session and deletion are implemented. Timeout is measured from `created_at`, as the session spec requires. No tests |
 | `app/` | C | The full path is usable. No UI tests |
 | `docs/` | B | `tests/test_doc_links.py` checks relative links. Freshness is still updated in the same change as the code |

@@ -30,12 +30,24 @@ The system SHALL NOT offer a pipeline run when no PDF has been accepted.
 - **THEN** the run control stays disabled
 - **AND** the interface tells the user to upload at least one PDF
 
-### Requirement: Digital extraction only
-The system SHALL extract every uploaded PDF as a digital document. It MUST NOT ask the user whether the PDF is scanned.
+### Requirement: Parser tier
+The system SHALL extract each accepted PDF with the parser tier selected in advanced settings. The tiers are `fast`, `medium`, and `slow`. `config/parsers.py` maps them to pymupdf4llm, docling, and marker. The default tier is medium. The system MUST NOT ask the user whether the PDF is scanned.
 
-#### Scenario: Any accepted PDF
-- **WHEN** the user runs the pipeline on an accepted PDF
-- **THEN** extraction runs without OCR
+#### Scenario: Default tier
+- **WHEN** the user has not changed advanced settings
+- **AND** the user runs the pipeline on an accepted PDF
+- **THEN** extraction uses docling on the digital text layer
+- **AND** OCR stays off
+
+#### Scenario: Fast tier
+- **WHEN** the user selects the fast tier
+- **THEN** extraction uses pymupdf4llm on the digital text layer
+- **AND** each non-empty page becomes one chunk
+
+#### Scenario: Slow tier
+- **WHEN** the user selects the slow tier
+- **THEN** extraction uses marker
+- **AND** marker may OCR a region that has no usable text layer
 
 ### Requirement: Same file name
 The system MUST replace the stored bytes when an accepted upload uses a name already stored in the session.

@@ -8,7 +8,7 @@ Map of judicial-rag as of 2026-09-26. This is the code that exists, not a target
 PDF on disk (session)
         │
         ▼
-pipeline/extractor.py     Docling + HybridChunker → models.document.DocumentResult
+pipeline/extractor.py     parser tier → models.document.DocumentResult
         │
         ▼
 pipeline/embedder.py      Hugging Face Inference → that session's Chroma collection
@@ -33,7 +33,7 @@ app/                      Streamlit
 | Package | Responsibility | Does not |
 |---|---|---|
 | `models/` | Pydantic contracts for documents and for questions and answers | I/O, network, Streamlit |
-| `config/` | Settings from the environment (`settings.py`) | Call the LLM or read PDFs |
+| `config/` | Settings from the environment (`settings.py`) and the parser-tier map (`parsers.py`) | Call the LLM or read PDFs |
 | `services/` | `llm_client.py` routes Anthropic, OpenAI, DeepSeek, and Gemini | Choose chunks or the question type |
 | `pipeline/` | Extract, index, search, and answer | Render UI or own the temp directory |
 | `storage/` | Per-session temp directory and expiry | Interpret PDF content |
@@ -51,7 +51,7 @@ config ───────────── (no imports from this repo)
 services ─────────── config
 pipeline ─────────── models, config, services
 storage ──────────── config, pipeline.embedder
-app ──────────────── models, pipeline, storage, app.components
+app ──────────────── models, pipeline, storage, config, app.components
 tests ────────────── any package; production does not import tests
 ```
 
@@ -79,7 +79,7 @@ Data that crosses packages is a model in `models/`, not an ad hoc dict.
 | Boundary | Type |
 |---|---|
 | Extractor → embedder | `DocumentResult` |
-| UI → orchestrator | `list[Path]`, `QuestionSchema`, `session_id` |
+| UI → orchestrator | `list[Path]`, `QuestionSchema`, `session_id`, parser tier |
 | Orchestrator → UI | `list[DocumentAnswers]`, `ProgressEvent` |
 | Agent → UI | `AgentAnswer` (`answer`, `citation`, `confidence`, `answer_source`) |
 

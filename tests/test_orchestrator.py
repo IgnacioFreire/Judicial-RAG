@@ -74,7 +74,7 @@ async def test_second_run_answers_only_the_files_still_uploaded(
 ) -> None:
     docs = {"a.pdf": _document("a.pdf"), "b.pdf": _document("b.pdf")}
 
-    async def fake_extract(pdf_path: Path) -> DocumentResult:
+    async def fake_extract(pdf_path: Path, tier: str = "medium") -> DocumentResult:
         return docs[pdf_path.name]
 
     fake_extractor = ModuleType("pipeline.extractor")
@@ -129,7 +129,7 @@ async def test_pdf_with_no_text_is_a_visible_failure(
         "ok.pdf": _document("ok.pdf"),
     }
 
-    async def fake_extract(pdf_path: Path) -> DocumentResult:
+    async def fake_extract(pdf_path: Path, tier: str = "medium") -> DocumentResult:
         return docs[pdf_path.name]
 
     fake_extractor = ModuleType("pipeline.extractor")

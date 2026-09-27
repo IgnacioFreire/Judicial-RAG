@@ -9,6 +9,8 @@ dependencies = [
     "streamlit>=1.35.0",
     # PDF extraction
     "docling>=2.0.0",
+    "pymupdf4llm>=0.0.17",
+    "marker-pdf>=1.0.0",
     # Embeddings
     "huggingface-hub>=0.24.0",
     "numpy>=1.26.0",

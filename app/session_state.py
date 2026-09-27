@@ -11,6 +11,7 @@ import uuid
 
 import streamlit as st
 
+from config.parsers import DEFAULT_PARSER_TIER
 from models.query import QuestionSchema
 from storage.session_manager import get_or_create_session
 
@@ -26,6 +27,7 @@ _RESULTS = "results"
 _IS_PROCESSING = "is_processing"
 _UPLOADED_FILES = "uploaded_files"
 _RUN_ERRORS = "run_errors"
+_PARSER_TIER = "parser_tier"
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +53,7 @@ def init() -> None:
     st.session_state.setdefault(_IS_PROCESSING, False)
     st.session_state.setdefault(_UPLOADED_FILES, [])
     st.session_state.setdefault(_RUN_ERRORS, [])
+    st.session_state.setdefault(_PARSER_TIER, DEFAULT_PARSER_TIER)
 
     # Ensure the backend Session object exists for this ID so the
     # temporary directory and ChromaDB collection are ready before
@@ -167,11 +170,29 @@ def set_run_errors(value: list[str]) -> None:
     st.session_state[_RUN_ERRORS] = value
 
 
+def parser_tier() -> str:
+    """Return the parser tier selected for this session.
+
+    Returns:
+        One of fast, medium, or slow. Medium until the user changes it.
+    """
+    return st.session_state[_PARSER_TIER]
+
+
+def set_parser_tier(value: str) -> None:
+    """Persist the parser tier for this session.
+
+    Args:
+        value: One of fast, medium, or slow.
+    """
+    st.session_state[_PARSER_TIER] = value
+
+
 def reset() -> None:
     """Clear results and uploads to prepare for a new pipeline run.
 
-    Intentionally keeps the session ID and schema intact so the user
-    does not need to redefine questions when uploading a new batch of PDFs.
+    Intentionally keeps the session ID, the schema, and the parser tier
+    so the user does not redefine questions or the parser for a new batch.
     """
     st.session_state[_RESULTS] = None
     st.session_state[_UPLOADED_FILES] = []

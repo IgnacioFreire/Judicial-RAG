@@ -1,6 +1,6 @@
 # Docling in this repo
 
-Used only in `pipeline/extractor.py`. User-visible consequences are specified in [`../product-specs/document-upload.md`](../product-specs/document-upload.md).
+Used for the medium parser tier in `pipeline/extractor.py`. User-visible consequences are specified in [`../product-specs/document-upload.md`](../product-specs/document-upload.md). The fast and slow tiers do not use this converter.
 
 ## What is on
 

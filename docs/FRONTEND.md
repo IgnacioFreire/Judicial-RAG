@@ -9,6 +9,7 @@ Streamlit, one script. There is no router and no extra page.
 | `app/components/uploader.py` | `st.file_uploader`. Writes accepted files into `session.pdf_dir`. The size rule is in [`product-specs/document-upload.md`](product-specs/document-upload.md) |
 | `app/components/question_form.py` | Drafts and **Save schema** |
 | `app/components/results_viewer.py` | Expanders of `DocumentAnswers` |
+| `app/components/advanced_settings.py` | Sidebar expander for the parser tier |
 
 ## State keys
 
@@ -22,6 +23,7 @@ In `app/session_state.py`:
 | `is_processing` | `bool` | `False` |
 | `uploaded_files` | `list` | `[]` |
 | `run_errors` | `list[str]` | `[]`. Failure messages from the latest run. Shown again after the rerun that ends the run. Cleared on Reset and at the start of the next run |
+| `parser_tier` | `str` | `medium`. One of `fast`, `medium`, `slow`. Kept on Reset. The method names are in `config/parsers.py` |
 
 Components use the accessors (`state.schema()`, `state.set_results()`, …). Do not add raw keys in `main.py` or in the viewer.
 
