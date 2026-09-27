@@ -4,7 +4,7 @@ React (Vite) with four routes. FastAPI in `app/` is the only process that calls 
 
 | Path | Page |
 |---|---|
-| `/` | Overview: summary cards, run, reset, recent PDFs |
+| `/` | Overview: metric panel, run, reset, recent PDFs, next-step links |
 | `/documents` | Upload and the document table |
 | `/documents/:name` | One PDF: status, times, answers when the run finished it |
 | `/settings` | Question editor, save schema, three tiers, read-only type list |

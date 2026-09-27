@@ -2,19 +2,21 @@
 
 Layout and copy only. Upload, save, run, reset, and results behave as specified in [`product-specs/`](product-specs/index.md). Do not restate those rules here.
 
-One dashboard shell. Title `⚖️ Judicial RAG`. Caption: "Extract and classify variables from judicial PDF documents."
+One dashboard shell. The sidebar mark is the product name. Caption: "Extract and classify variables from judicial PDF documents."
 
 ```
-┌ nav ───────────────────┬ page ───────────────────────────┐
-│ Overview               │ the selected route              │
-│ Documents              │                                 │
-│ Settings               │ profile popover in the header  │
-└────────────────────────┴─────────────────────────────────┘
+┌ nav (full height) ─────┬ header: profile ───────────────┐
+│ Overview               ├ page (max width) ──────────────┤
+│ Documents              │ title, metric strip or table   │
+│ Settings               │                                │
+└────────────────────────┴────────────────────────────────┘
 ```
+
+Composition follows a light dashboard: full-height sidebar, a single metric panel on overview (lead number plus a short stat row), a recent-documents list beside next-step links, and a documents table with status pills. Dark mode keeps the same structure.
 
 | Route | Contents |
 |---|---|
-| Overview | Caption, metric cards, Run pipeline, Reset, recent PDFs |
+| Overview | Title, metric panel, Run pipeline, Reset, recent PDFs, next steps |
 | Documents | Upload, table of name, status, accepted time, finished time |
 | Document | Status, times, and that PDF's answers |
 | Settings | Define questions, Save schema, Advanced settings, read-only question types |
