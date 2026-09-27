@@ -13,7 +13,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t.title} description={t.subtitle} helpKey="settings" />
-      <div className="space-y-4 rounded-2xl border border-border bg-muted/40 p-4">
+      <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
         <QuestionForm
           disabled={session.is_processing}
           onSaved={(count) =>

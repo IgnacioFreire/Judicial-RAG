@@ -11,6 +11,14 @@ Upload rules, schema rules, and answer rows stay in their own specs. This file o
 ### Requirement: Routes
 The UI SHALL provide an overview, a document list, a document detail, and a settings page. Settings SHALL hold the question editor and the parser, chunk, and retrieval tiers. The overview SHALL show the summary and the run controls.
 
+### Requirement: Overview composition
+The overview SHALL show the accepted PDF count, whether the schema is saved, the question count, and the answered ratio when a run has results. It SHALL also show a recent document list and links to the document upload page and to the question editor.
+
+#### Scenario: Empty session
+- **WHEN** the user opens the overview with no accepted PDFs
+- **THEN** the recent list is empty
+- **AND** the next-step links still open documents and settings
+
 #### Scenario: Open settings
 - **WHEN** the user opens settings
 - **THEN** the question editor and the three tiers are on that page
