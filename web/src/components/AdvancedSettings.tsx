@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { Settings2 } from "lucide-react"
 
+import { HelpButton } from "@/components/HelpButton"
 import { Label } from "@/components/ui/label"
 import { saveTiers } from "@/lib/api"
-import { darkField } from "@/lib/styles"
+import { fieldClass } from "@/lib/styles"
 import type { SessionView } from "@/lib/types"
 
 type Props = {
@@ -23,20 +24,25 @@ export function AdvancedSettings({ session, disabled, onChange }: Props) {
   }
 
   return (
-    <details
-      open={open}
-      className="rounded-2xl bg-zinc-900 p-4"
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-zinc-100">
-        <Settings2 className="size-4 text-zinc-400" />
-        Advanced settings
-      </summary>
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Settings2 className="size-4 text-muted-foreground" />
+          Advanced settings
+        </p>
+        <HelpButton helpKey="tiers" />
+      </div>
+      <details
+        open={open}
+        className="mt-3"
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer text-sm text-muted-foreground">Show tiers</summary>
       <div className="mt-4 space-y-3">
         <div className="space-y-1">
-          <Label className="text-zinc-400">Parser</Label>
+          <Label className="text-muted-foreground">Parser</Label>
           <select
-            className={darkField}
+            className={fieldClass}
             value={session.parser_tier}
             disabled={disabled}
             title="Fast reads the text layer. Medium keeps the section structure. Slow spends longer on each page."
@@ -50,9 +56,9 @@ export function AdvancedSettings({ session, disabled, onChange }: Props) {
           </select>
         </div>
         <div className="space-y-1">
-          <Label className="text-zinc-400">Chunking</Label>
+          <Label className="text-muted-foreground">Chunking</Label>
           <select
-            className={darkField}
+            className={fieldClass}
             value={session.chunk_tier}
             disabled={disabled}
             title="Fast cuts every 512 embedding tokens. Medium keeps sections at that same limit. Slow asks the model for a situation sentence before embedding."
@@ -66,9 +72,9 @@ export function AdvancedSettings({ session, disabled, onChange }: Props) {
           </select>
         </div>
         <div className="space-y-1">
-          <Label className="text-zinc-400">Retrieval</Label>
+          <Label className="text-muted-foreground">Retrieval</Label>
           <select
-            className={darkField}
+            className={fieldClass}
             value={session.embedding_tier}
             disabled={disabled}
             title="Fast searches by vector only. Medium also matches words. Slow reranks a few dozen candidates."
@@ -82,6 +88,7 @@ export function AdvancedSettings({ session, disabled, onChange }: Props) {
           </select>
         </div>
       </div>
-    </details>
+      </details>
+    </div>
   )
 }

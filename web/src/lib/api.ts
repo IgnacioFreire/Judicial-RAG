@@ -1,6 +1,7 @@
 import type {
   DocumentDetail,
   DocumentRow,
+  KeysView,
   ProfileView,
   QuestionDraft,
   RunEvent,
@@ -90,6 +91,27 @@ export function loadDocument(name: string): Promise<DocumentDetail> {
 export function loadProfile(): Promise<ProfileView> {
   return fetch("/api/profile", { credentials: "include" }).then((r) =>
     parse<ProfileView>(r),
+  )
+}
+
+export function loadKeysStatus(): Promise<KeysView> {
+  return fetch("/api/profile/keys", { credentials: "include" }).then((r) =>
+    parse<KeysView>(r),
+  )
+}
+
+export function saveKeys(body: Record<string, string | undefined>): Promise<KeysView> {
+  return fetch("/api/profile/keys", {
+    method: "PUT",
+    credentials: "include",
+    headers: jsonHeaders,
+    body: JSON.stringify(body),
+  }).then((r) => parse<KeysView>(r))
+}
+
+export function signOut(): Promise<{ signed_out: boolean }> {
+  return fetch("/api/sign-out", { method: "POST", credentials: "include" }).then((r) =>
+    parse(r),
   )
 }
 

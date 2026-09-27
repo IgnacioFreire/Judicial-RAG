@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { ListChecks } from "lucide-react"
 
+import { HelpButton } from "@/components/HelpButton"
 import { QuestionEditor } from "@/components/QuestionEditor"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -47,10 +48,13 @@ export function QuestionForm({ disabled, onSaved }: Props) {
   }
 
   return (
-    <section className="space-y-3 rounded-2xl bg-zinc-900 p-4">
-      <div className="flex items-center gap-2 text-zinc-100">
-        <ListChecks className="size-4 text-zinc-400" />
-        <h2 className="text-sm font-semibold">Define questions</h2>
+    <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-foreground">
+          <ListChecks className="size-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">Define questions</h2>
+        </div>
+        <HelpButton helpKey="schema" />
       </div>
       {drafts.map((draft, index) => (
         <QuestionEditor

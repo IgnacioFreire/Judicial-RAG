@@ -68,6 +68,14 @@ export type ProfileView = {
   output_tokens: number
 }
 
+export type KeysView = {
+  llm_key_configured: boolean
+  huggingface_key_configured: boolean
+  llm_env_var: string
+  llm_key_field: string
+  huggingface_env_var: string
+}
+
 export type DocumentAnswers = {
   document: string
   answers: AgentAnswer[]

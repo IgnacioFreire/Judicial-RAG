@@ -1,7 +1,9 @@
 import { Play, RotateCcw } from "lucide-react"
 
+import { HelpButton } from "@/components/HelpButton"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { useI18n } from "@/i18n/context"
 
 type Props = {
   canRun: boolean
@@ -13,17 +15,23 @@ type Props = {
 }
 
 export function RunBar({ canRun, processing, progress, status, onRun, onReset }: Props) {
-  const hint = canRun ? undefined : "Upload PDFs and save a schema first."
+  const { messages } = useI18n()
+  const t = messages.run
+  const hint = canRun ? undefined : t.hint
   return (
-    <div className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm">
+    <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-foreground">{t.run}</p>
+        <HelpButton helpKey="run" />
+      </div>
       <div className="grid grid-cols-[2fr_1fr] gap-3">
         <Button type="button" disabled={!canRun} title={hint} onClick={onRun}>
           <Play className="size-4" />
-          Run pipeline
+          {t.run}
         </Button>
         <Button type="button" variant="outline" disabled={processing} onClick={onReset}>
           <RotateCcw className="size-4" />
-          Reset
+          {t.reset}
         </Button>
       </div>
       {progress != null ? <Progress value={progress} /> : null}

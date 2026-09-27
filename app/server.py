@@ -138,6 +138,7 @@ class KeysView(BaseModel):
     llm_key_configured: bool
     huggingface_key_configured: bool
     llm_env_var: str
+    llm_key_field: str
     huggingface_env_var: str = "HUGGINGFACE_API_KEY"
 
 
@@ -286,6 +287,16 @@ def _llm_env_var() -> str:
         "deepseek": "DEEPSEEK_API_KEY",
     }
     return names[settings.llm_provider]
+
+
+def _llm_key_field() -> str:
+    fields = {
+        "anthropic": "anthropic_api_key",
+        "openai": "openai_api_key",
+        "gemini": "gemini_api_key",
+        "deepseek": "deepseek_api_key",
+    }
+    return fields[settings.llm_provider]
 
 
 def _profile_for(session_id: str, state: UiState) -> ProfileView:
@@ -554,6 +565,7 @@ def get_profile_keys(request: Request) -> JSONResponse:
         llm_key_configured=active_llm_key_configured(overrides),
         huggingface_key_configured=huggingface_key_configured(overrides),
         llm_env_var=_llm_env_var(),
+        llm_key_field=_llm_key_field(),
     )
     return _json(view, session_id, is_new)
 
@@ -571,6 +583,7 @@ def put_profile_keys(request: Request, body: KeysPatch) -> JSONResponse:
         llm_key_configured=active_llm_key_configured(overrides),
         huggingface_key_configured=huggingface_key_configured(overrides),
         llm_env_var=_llm_env_var(),
+        llm_key_field=_llm_key_field(),
     )
     return _json(view, session_id, is_new)
 
