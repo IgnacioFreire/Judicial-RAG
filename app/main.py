@@ -45,7 +45,9 @@ for _noisy in (
     "huggingface_hub",
     "rapidocr",
     "httpx",
-    "chromadb",
+    "supabase",
+    "postgrest",
+    "gotrue",
 ):
     logging.getLogger(_noisy).setLevel(logging.WARNING)
 
@@ -151,6 +153,7 @@ def _run_pipeline(pdf_paths: list[Path], schema: QuestionSchema) -> None:
                 on_progress=on_progress,
                 parser_tier=state.parser_tier(),
                 chunk_tier=state.chunk_tier(),
+                embedding_tier=state.embedding_tier(),
             )
         )
         state.set_results(results)

@@ -9,7 +9,7 @@ Streamlit, one script. There is no router and no extra page.
 | `app/components/uploader.py` | `st.file_uploader`. Writes accepted files into `session.pdf_dir`. The size rule is in [`product-specs/document-upload.md`](product-specs/document-upload.md) |
 | `app/components/question_form.py` | Drafts and **Save schema** |
 | `app/components/results_viewer.py` | Expanders of `DocumentAnswers` |
-| `app/components/advanced_settings.py` | Sidebar expander for the parser tier |
+| `app/components/advanced_settings.py` | Sidebar expander for the parser, chunk, and retrieval tiers |
 
 ## State keys
 
@@ -25,6 +25,7 @@ In `app/session_state.py`:
 | `run_errors` | `list[str]` | `[]`. Failure messages from the latest run. Shown again after the rerun that ends the run. Cleared on Reset and at the start of the next run |
 | `parser_tier` | `str` | `medium`. One of `fast`, `medium`, `slow`. Kept on Reset. The method names are in `config/parsers.py` |
 | `chunk_tier` | `str` | `medium`. One of `fast`, `medium`, `slow`. Kept on Reset. The method names are in `config/chunkers.py` |
+| `embedding_tier` | `str` | `fast`. One of `fast`, `medium`, `slow`. Kept on Reset. The method names are in `config/embeddings.py` |
 
 Components use the accessors (`state.schema()`, `state.set_results()`, …). Do not add raw keys in `main.py` or in the viewer.
 
@@ -38,10 +39,10 @@ Run uses `asyncio.run(run(...))` because the Streamlit script is synchronous. Wh
 
 ## UI logging
 
-`main.py` sets the root logger to INFO and raises `docling`, `transformers`, `huggingface_hub`, `rapidocr`, `httpx`, and `chromadb` to WARNING. Do not lower that threshold to "see what the PDF said."
+`main.py` sets the root logger to INFO and raises `docling`, `transformers`, `huggingface_hub`, `rapidocr`, `httpx`, `supabase`, `postgrest`, and `gotrue` to WARNING. Do not lower that threshold to "see what the PDF said."
 
 ## What not to add here
 
-- Direct calls to Docling, Chroma, or `call_llm`.
+- Direct calls to Docling, the search index, or `call_llm`.
 - A second page to manage schemas, without a spec.
 - Result state computed in the component instead of reading `DocumentAnswers`.

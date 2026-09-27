@@ -2,16 +2,18 @@
 cleanup.py
 
 Cleanup routines for temporary session data.
-Deletes temporary directories and ChromaDB collections when a session
+Deletes temporary directories and session index rows when a session
 ends explicitly or when its age exceeds the configured timeout.
 The clock starts at creation, not at the last interaction.
+Rows left behind by a dead process are deleted on the next UI load
+once they are older than the timeout, measured from when they were stored.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from config.settings import settings
-from pipeline.embedder import delete_collection
+from pipeline.embedder import delete_collection, delete_expired_index
 from storage.session_manager import list_sessions, remove_session
 
 logger = logging.getLogger(__name__)
@@ -26,8 +28,7 @@ def cleanup_session(session_id: str) -> None:
     """Delete all data for a single session.
 
     Removes the temporary PDF directory from disk and deletes the session's
-    ChromaDB collection. Safe to call multiple times — both operations are
-    idempotent.
+    index rows. Safe to call multiple times — both operations are idempotent.
 
     Args:
         session_id: Unique session identifier to clean up.
@@ -41,12 +42,12 @@ def cleanup_session(session_id: str) -> None:
 
     logger.info("Cleaning up session: %s", session_id)
 
-    # Delete ChromaDB collection first so no orphaned vectors remain
+    # Delete the index first so no orphaned vectors remain
     # if the directory deletion fails for any reason
     try:
         delete_collection(session_id)
     except Exception:
-        logger.exception("Failed to delete ChromaDB collection for %s", session_id)
+        logger.exception("Failed to delete index for %s", session_id)
 
     # Release the temporary directory — this deletes all uploaded PDFs
     try:
@@ -91,5 +92,11 @@ def cleanup_expired_sessions() -> int:
         logger.info("Expired session cleanup: %d session(s) removed", cleaned)
     else:
         logger.debug("No expired sessions found")
+
+    cutoff = now - timedelta(minutes=timeout_minutes)
+    try:
+        delete_expired_index(cutoff)
+    except Exception:
+        logger.exception("Failed to delete expired index rows")
 
     return cleaned

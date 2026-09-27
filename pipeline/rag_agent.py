@@ -17,6 +17,7 @@ import json
 import logging
 import re
 
+from config.embeddings import DEFAULT_EMBEDDING_TIER
 from models.query import (
     AgentAnswer,
     AnswerConfidence,
@@ -53,6 +54,7 @@ def answer_question(
     question: UserQuestion,
     session_id: str,
     source: str,
+    embedding_tier: str = DEFAULT_EMBEDDING_TIER,
 ) -> AgentAnswer:
     """Answer a single user question for a specific document.
 
@@ -63,6 +65,7 @@ def answer_question(
         question: User-defined question including type, rules and categories.
         session_id: User session identifier for vector store isolation.
         source: PDF filename to restrict chunk retrieval to.
+        embedding_tier: Retrieval setting for this session. Fast is the default.
 
     Returns:
         AgentAnswer with answer text, citation and confidence level.
@@ -81,6 +84,7 @@ def answer_question(
         session_id=session_id,
         source=source,
         n_results=_N_RESULTS,
+        embedding_tier=embedding_tier,
     )
 
     if not chunks:

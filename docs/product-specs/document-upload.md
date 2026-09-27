@@ -40,29 +40,15 @@ The system SHALL extract each accepted PDF with the parser tier selected in adva
 - **AND** OCR stays off
 
 #### Scenario: Fast tier
-- **WHEN** the user selects the fast tier
+- **WHEN** the user selects the fast parser tier
 - **THEN** extraction uses pymupdf4llm on the digital text layer
-- **AND** each non-empty page becomes one chunk
 
 #### Scenario: Slow tier
 - **WHEN** the user selects the slow tier
 - **THEN** extraction uses marker
 - **AND** marker may OCR a region that has no usable text layer
 
-### Requirement: Chunk tier
-The system SHALL chunk each accepted PDF with the chunk tier selected in advanced settings. The tiers are `fast`, `medium`, and `slow`. `config/chunkers.py` maps them to page, hybrid, and fine. The default tier is medium.
-
-#### Scenario: Default chunk tier
-- **WHEN** the user has not changed the chunking setting
-- **THEN** a Docling extraction uses the section chunker at 512 tokens
-
-#### Scenario: Fast chunk tier
-- **WHEN** the user selects the fast chunk tier
-- **THEN** each non-empty page becomes one chunk
-
-#### Scenario: Slow chunk tier
-- **WHEN** the user selects the slow chunk tier
-- **THEN** chunks are cut at 256 tokens with the embedding tokenizer
+How the extracted text is split is specified in [`chunking.md`](chunking.md).
 
 ### Requirement: Same file name
 The system MUST replace the stored bytes when an accepted upload uses a name already stored in the session.

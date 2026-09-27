@@ -14,7 +14,7 @@ uv run jupyter lab notebooks
 
 On Windows, copy `.env.example` to `.env` yourself. Fill in `.env` and do not commit it.
 
-Open one notebook and use its kernel only for that file. Run the cells from top to bottom. Restart the kernel before you open the next notebook. Each notebook that embeds builds its own in-memory index and deletes that index in the last cell.
+Open one notebook and use its kernel only for that file. Run the cells from top to bottom. Restart the kernel before you open the next notebook. Each notebook that embeds writes its own session index in Supabase and deletes that index in the last cell.
 
 Do not commit notebook outputs, `.ipynb_checkpoints/`, or PDFs.
 
@@ -47,11 +47,13 @@ A good run prints the bucket name, one row per object with `accepted` or `reject
 
 ## Extraction from the bucket
 
-`02_extraction.ipynb` uses the same admin account as `01_pdfs.ipynb`. It downloads each accepted PDF into a temporary directory, then runs `extract` once for every pair of parser tier and chunk tier. Parser tiers are in `config/parsers.py`. Chunk tiers are in `config/chunkers.py`: fast is one chunk per page, medium is the section chunker at 512 tokens, and slow cuts at 256 tokens with the embedding tokenizer. Narrow `TIERS` or `CHUNK_TIERS_SELECTED` to skip combinations. The last cell deletes those files. The first medium parser run downloads Docling models. The first slow parser run downloads Marker models. The first slow chunk run downloads the embedding tokenizer. It does not embed and it does not print chunk text unless you set `SHOW_TEXT = True`.
+`02_extraction.ipynb` uses the same admin account as `01_pdfs.ipynb`. It downloads each accepted PDF into a temporary directory, then runs `extract` once per parser tier. Chunking stays at the default, medium. Parser tiers are in `config/parsers.py`. Narrow `TIERS` to skip a parser. The last cell deletes those files. The first medium parser run downloads Docling models. The first slow parser run downloads Marker models. It does not embed and it does not print chunk text unless you set `SHOW_TEXT = True`.
+
+`03_embedding.ipynb` uses the same admin account and the same private bucket. It downloads each accepted PDF into a temporary directory, extracts it once per chunk tier, and embeds each result. Chunk tiers are in `config/chunkers.py`. Narrow `CHUNK_TIERS_SELECTED` to skip one. The first slow chunk run sends each chunk to the configured LLM. The first slow retrieval is not run in this notebook. Apply `supabase/schema.sql` once in the SQL editor before this notebook. The last cell deletes that session's index rows and the temporary files.
 
 ## Local PDFs for the later notebooks
 
-Notebooks `03` through `07` do not read Supabase. Put PDFs in `notebooks/inputs/`, or set `NOTEBOOK_PDF_DIR` to another directory. Those calls need the LLM key and `HUGGINGFACE_API_KEY` in `.env`.
+Notebooks `04` through `07` read local PDFs, not the bucket. Put PDFs in `notebooks/inputs/`, or set `NOTEBOOK_PDF_DIR` to another directory. Those calls need the LLM key and `HUGGINGFACE_API_KEY` in `.env`. Any cell that embeds or searches also signs in with the admin test user and writes that run's index to Supabase. The last cell deletes those rows. Apply `supabase/schema.sql` once in the SQL editor before the first of these notebooks.
 
 The question cells are templates. Replace the label and the instruction with your own question before you run retrieval, the agent, results, or KPIs. The template is not a legal rule.
 
@@ -60,11 +62,11 @@ The question cells are templates. Replace the label and the instruction with you
 | Notebook | You are checking | A good run shows |
 |---|---|---|
 | `01_pdfs.ipynb` | Sign-in and the private bucket | Accepted and rejected rows, then byte counts. No Docling. |
-| `02_extraction.ipynb` | `extract` on each PDF from the bucket, once per parser tier and chunk tier | Parser, chunk tier, chunk method, filename, pages, chunks, heading count, and min, median, and max characters, plus seconds. A failure prints the exception type and continues. A PDF with no chunks is a failure. The last cell deletes the temporary files. |
-| `03_embedding.ipynb` | `embed_document` | Filename, chunk count, indexed sources, and embed seconds. The last cell deletes the collection. |
-| `04_retrieval.ipynb` | `search` for one question and one file | Rank, page, headings, distance, and character count. Default `n_results` is 5. The last cell deletes the collection. |
-| `05_agent.ipynb` | `answer_question` for one question and one file | Label, question type, confidence, answer source, citation page, citation score, citation character count, and seconds. The last cell deletes the collection. |
-| `06_results.ipynb` | The same columns the UI shows | The first code cell uses an in-memory sample and needs no quota. Later cells answer your questions, then print `result_rows` and `answered_counts` with the mapping time on its own. The last cell deletes the collection. |
-| `07_kpis.ipynb` | One full `run` | Phase times, `kpi_summary`, `answered_counts`, and `result_rows`. The last cell deletes the collection. |
+| `02_extraction.ipynb` | `extract` on each PDF from the bucket, once per parser tier | Parser, method, filename, pages, chunks, heading count, and min, median, and max characters, plus seconds. A failure prints the exception type and continues. A PDF with no chunks is a failure. The last cell deletes the temporary files. |
+| `03_embedding.ipynb` | `extract` once per chunk tier on each PDF from the bucket, then `embed_document` | Chunk tier, chunk method, filename, pages, chunks, heading count, and min, median, and max characters, then embed seconds and indexed sources. Each tier has its own session index. A failure prints the exception type and continues. The last cell deletes those rows and the temporary files. |
+| `04_retrieval.ipynb` | `search` for one question and one file | Rank, page, headings, distance, and character count. Default `n_results` is 5. The last cell deletes that session's index rows. |
+| `05_agent.ipynb` | `answer_question` for one question and one file | Label, question type, confidence, answer source, citation page, citation score, citation character count, and seconds. The last cell deletes that session's index rows. |
+| `06_results.ipynb` | The same columns the UI shows | The first code cell uses an in-memory sample and needs no quota. Later cells answer your questions, then print `result_rows` and `answered_counts` with the mapping time on its own. The last cell deletes that session's index rows. |
+| `07_kpis.ipynb` | One full `run` | Phase times, `kpi_summary`, `answered_counts`, and `result_rows`. The last cell deletes that session's index rows. |
 
 Run `06_results.ipynb` through the sample cell first when you want to check the mapping without calling an API.

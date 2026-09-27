@@ -27,7 +27,7 @@ class Session:
     """All state associated with a single user session.
 
     Attributes:
-        session_id:  Unique identifier used for ChromaDB collection isolation
+        session_id:  Unique identifier used for index isolation
                      and temporary directory naming.
         temp_dir:    TemporaryDirectory instance. Holds the context manager
                      that controls the directory's lifetime on disk.
@@ -118,8 +118,8 @@ def get_or_create_session(session_id: str) -> Session:
         logger.debug("Session restored: %s", session_id)
         return session
 
-    # Session was lost — recreate it with the same ID so ChromaDB collections
-    # remain accessible under the same name
+    # Session was lost — recreate it with the same ID so the index
+    # remains accessible under the same session id
     temp_dir = tempfile.TemporaryDirectory(prefix=f"judicial_rag_{session_id}_")
     pdf_dir = Path(temp_dir.name) / "pdfs"
     pdf_dir.mkdir(parents=True, exist_ok=True)

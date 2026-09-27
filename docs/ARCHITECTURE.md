@@ -11,10 +11,10 @@ PDF on disk (session)
 pipeline/extractor.py     parser tier and chunk tier → models.document.DocumentResult
         │
         ▼
-pipeline/embedder.py      Hugging Face Inference → that session's Chroma collection
+pipeline/embedder.py      Hugging Face Inference → that session's Supabase index
         │
         ▼
-pipeline/vector_store.py  search by question, filtered by PDF filename
+pipeline/vector_store.py  retrieval tier, filtered by PDF filename
         │
         ▼
 pipeline/rag_agent.py     prompt by QuestionType → services/llm_client.py
@@ -33,7 +33,7 @@ app/                      Streamlit
 | Package | Responsibility | Does not |
 |---|---|---|
 | `models/` | Pydantic contracts for documents and for questions and answers | I/O, network, Streamlit |
-| `config/` | Settings from the environment (`settings.py`), the parser-tier map (`parsers.py`), and the chunk-tier map (`chunkers.py`) | Call the LLM or read PDFs |
+| `config/` | Settings from the environment (`settings.py`) and the tier maps (`parsers.py`, `chunkers.py`, `embeddings.py`) | Call the LLM or read PDFs |
 | `services/` | `llm_client.py` routes Anthropic, OpenAI, DeepSeek, and Gemini | Choose chunks or the question type |
 | `pipeline/` | Extract, index, search, and answer | Render UI or own the temp directory |
 | `storage/` | Per-session temp directory and expiry | Interpret PDF content |
@@ -59,7 +59,7 @@ A change keeps these edges:
 
 - `models/` and `config/` do not import the rest of the repo.
 - `pipeline/` does not import `app/` or `storage/`.
-- `app/` does not open Chroma or call Docling. It asks `pipeline.orchestrator.run`.
+- `app/` does not open the search index or call Docling. It asks `pipeline.orchestrator.run`.
 - The project is installed into the environment, so `app/main.py` does not rewrite `sys.path`.
 - The only `storage/` edge into the pipeline is `cleanup.py` → `pipeline.embedder.delete_collection`. That exception is known. Do not add more `pipeline/` imports from `storage/`.
 
@@ -69,7 +69,7 @@ Cross-cutting concerns enter at one place:
 |---|---|
 | LLM provider and model, parallelism, timeout | `config/settings.py`, read by whoever needs it |
 | Model call | `services/llm_client.call_llm` |
-| Data isolation | `session_id` as the Chroma collection name and as the temp-directory prefix |
+| Data isolation | `session_id` on every index read and write, and as the temp-directory prefix |
 | Progress toward the UI | `OnProgress` callback the orchestrator invokes and `app/main.py` implements |
 
 ## Boundary contracts
@@ -79,15 +79,15 @@ Data that crosses packages is a model in `models/`, not an ad hoc dict.
 | Boundary | Type |
 |---|---|
 | Extractor → embedder | `DocumentResult` |
-| UI → orchestrator | `list[Path]`, `QuestionSchema`, `session_id`, parser tier, chunk tier |
+| UI → orchestrator | `list[Path]`, `QuestionSchema`, `session_id`, parser tier, chunk tier, retrieval tier |
 | Orchestrator → UI | `list[DocumentAnswers]`, `ProgressEvent` |
 | Agent → UI | `AgentAnswer` (`answer`, `citation`, `confidence`, `answer_source`) |
 
-The exception is a Chroma hit: `pipeline/vector_store.search` returns `list[dict]`. Do not extend that dict into other packages. If a new field has to leave the pipeline, add it to a model in `models/`.
+The exception is a search hit: `pipeline/vector_store.search` returns `list[dict]`. Do not extend that dict into other packages. If a new field has to leave the pipeline, add it to a model in `models/`.
 
 ## State that is not in the repo
 
-The decided store for users, sessions, PDF bytes, and the vector index is one Supabase project ([`design-docs/supabase.md`](design-docs/supabase.md)). The running Streamlit app has not moved there yet. Chroma still uses an in-memory `chromadb.Client()`, and the app still keeps PDFs in a `tempfile.TemporaryDirectory` per session (`storage/session_manager.py`) until that process exits or the session is cleaned up. There is no SQL schema in this repo. That is why `docs/generated/` has nothing to dump. Notebooks `01_pdfs.ipynb` and `02_extraction.ipynb` already read the private `pdfs` bucket as the admin test user.
+The decided store for users, sessions, PDF bytes, and the vector index is one Supabase project ([`design-docs/supabase.md`](design-docs/supabase.md)). The search index is that project's `chunks` table (`pgvector`), described in [`../supabase/schema.sql`](../supabase/schema.sql). The Streamlit server signs in as the admin test user and scopes every read and write by `session_id`. PDF bytes still live in a `tempfile.TemporaryDirectory` per session (`storage/session_manager.py`) until that process exits or the session is cleaned up. Notebooks `01_pdfs.ipynb`, `02_extraction.ipynb`, and `03_embedding.ipynb` read the private `pdfs` bucket as the admin test user. Notebooks that embed write the same `chunks` table.
 
 ## UI
 

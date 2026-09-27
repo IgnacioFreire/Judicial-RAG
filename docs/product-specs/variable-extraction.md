@@ -37,7 +37,7 @@ The system MUST instruct the model according to the saved question type. Extract
 - **AND** it is told to mark the answer inferred
 
 ### Requirement: Citation
-When the model names a supporting fragment, the system SHALL show that fragment with a page number and a similarity score between 0 and 1. The page and the score MUST come from the highest-ranked retrieved fragment for that question.
+When the model names a supporting fragment, the system SHALL show that fragment with a page number and a similarity score between 0 and 1. The page and the score MUST come from the highest-ranked retrieved fragment for that question. Which fragments are retrieved is specified in [`retrieval.md`](retrieval.md).
 
 #### Scenario: Cited answer
 - **WHEN** the model returns a citation string and at least one fragment was retrieved

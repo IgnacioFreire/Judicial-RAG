@@ -2,12 +2,12 @@
 test_embedder.py
 
 Unit tests for pipeline/embedder.py.
-Tests embedding generation, ChromaDB collection management and metadata
-serialisation without calling the real HF Inference API — all external
-calls are mocked so tests run fast and offline.
+Tests embedding generation, session index writes, and stored text
+without calling the real HF Inference API — all external calls are
+mocked so tests run fast and offline.
 
 Run all:     uv run pytest tests/test_embedder.py -v
-Run a class: uv run pytest tests/test_embedder.py::TestCollectionManagement -v
+Run a class: uv run pytest tests/test_embedder.py::TestSessionIndex -v
 """
 
 from unittest.mock import patch
@@ -99,36 +99,21 @@ def mock_inference(mock_vector: list[float]):
 # ---------------------------------------------------------------------------
 
 
-class TestCollectionManagement:
-    def test_get_collection_creates_new(self) -> None:
-        # A collection is created on first access and returns a valid object
-        from pipeline.embedder import get_collection
-
-        collection = get_collection("session-new-abc")
-        assert collection is not None
-        assert collection.count() == 0
-
-    def test_get_collection_is_idempotent(self) -> None:
-        # Calling get_collection twice with the same session_id returns the
-        # same collection without raising or creating a duplicate
-        from pipeline.embedder import get_collection
-
-        c1 = get_collection("session-idem-xyz")
-        c2 = get_collection("session-idem-xyz")
-        assert c1.name == c2.name
-
-    def test_delete_collection_removes_it(self) -> None:
-        from pipeline.embedder import delete_collection, get_collection
+class TestSessionIndex:
+    @pytest.mark.asyncio
+    async def test_delete_collection_removes_rows(
+        self, mock_inference, document: DocumentResult
+    ) -> None:
+        from pipeline.embedder import delete_collection, embed_document
+        from pipeline.index_store import get_index
 
         session_id = "session-delete-test"
-        get_collection(session_id)
+        await embed_document(document, session_id)
         delete_collection(session_id)
-        # After deletion a new empty collection is created on next access
-        collection = get_collection(session_id)
-        assert collection.count() == 0
+        assert get_index().count(session_id) == 0
 
     def test_delete_nonexistent_collection_does_not_raise(self) -> None:
-        # Deleting a collection that never existed must not raise — a session
+        # Deleting a session that never indexed must not raise — a session
         # may end before any PDFs are processed
         from pipeline.embedder import delete_collection
 
@@ -136,19 +121,29 @@ class TestCollectionManagement:
 
 
 # ---------------------------------------------------------------------------
-# Metadata serialisation
+# Stored fields
 # ---------------------------------------------------------------------------
 
 
-class TestBuildMetadata:
-    def test_headings_serialised_as_pipe_separated_string(self, chunk: Chunk) -> None:
-        from pipeline.embedder import _build_metadata
+class TestStoredFields:
+    @pytest.mark.asyncio
+    async def test_headings_round_trip(
+        self, mock_inference, document: DocumentResult
+    ) -> None:
+        from pipeline.embedder import embed_document
+        from pipeline.vector_store import search
 
-        meta = _build_metadata(chunk)
-        assert meta["headings"] == '["FALLO"]'
+        session_id = "session-headings"
+        await embed_document(document, session_id)
+        hits = search("pregunta", session_id, document.metadata.filename, n_results=5)
+        found = {hit["text"]: hit["headings"] for hit in hits}
+        assert found[document.chunks[0].text] == ["FALLO"]
+        assert found[document.chunks[1].text] == []
 
-    def test_multiple_headings_joined_with_pipe(self) -> None:
-        from pipeline.embedder import _build_metadata
+    @pytest.mark.asyncio
+    async def test_multiple_headings_round_trip(self, mock_inference) -> None:
+        from pipeline.embedder import embed_document
+        from pipeline.vector_store import search
 
         chunk = Chunk(
             text="Texto.",
@@ -158,25 +153,20 @@ class TestBuildMetadata:
             chunk_id="doc.pdf_2_0",
             headings=["FUNDAMENTOS DE DERECHO", "PRIMERO.-"],
         )
-        meta = _build_metadata(chunk)
-        assert meta["headings"] == '["FUNDAMENTOS DE DERECHO", "PRIMERO.-"]'
-
-    def test_empty_headings_serialised_as_empty_string(
-        self, chunk_no_headings: Chunk
-    ) -> None:
-        # "[]" is the empty list. Deserialise with json.loads.
-        from pipeline.embedder import _build_metadata
-
-        meta = _build_metadata(chunk_no_headings)
-        assert meta["headings"] == "[]"
-
-    def test_metadata_fields_present(self, chunk: Chunk) -> None:
-        from pipeline.embedder import _build_metadata
-
-        meta = _build_metadata(chunk)
-        assert meta["source"] == chunk.source
-        assert meta["page"] == chunk.page
-        assert meta["chunk_index"] == chunk.chunk_index
+        document = DocumentResult(
+            metadata=DocumentMetadata(
+                filename="doc.pdf",
+                total_pages=2,
+                total_chunks=1,
+            ),
+            chunks=[chunk],
+        )
+        await embed_document(document, "session-multi-headings")
+        hits = search("pregunta", "session-multi-headings", "doc.pdf")
+        assert hits[0]["headings"] == ["FUNDAMENTOS DE DERECHO", "PRIMERO.-"]
+        assert hits[0]["page"] == 2
+        assert hits[0]["chunk_index"] == 0
+        assert hits[0]["source"] == "doc.pdf"
 
 
 # ---------------------------------------------------------------------------
@@ -229,12 +219,37 @@ class TestEmbedDocument:
     async def test_embeds_all_chunks(
         self, mock_inference, document: DocumentResult
     ) -> None:
-        from pipeline.embedder import embed_document, get_collection
+        from pipeline.embedder import embed_document
+        from pipeline.index_store import get_index
 
         session_id = "session-embed-all"
         await embed_document(document, session_id)
-        collection = get_collection(session_id)
-        assert collection.count() == len(document.chunks)
+        assert get_index().count(session_id) == len(document.chunks)
+
+    @pytest.mark.asyncio
+    async def test_context_sentence_is_embedded_not_stored(
+        self, mock_inference, chunk: Chunk
+    ) -> None:
+        from pipeline.embedder import embed_document
+        from pipeline.index_store import get_index
+
+        document = DocumentResult(
+            metadata=DocumentMetadata(
+                filename=chunk.source,
+                total_pages=1,
+                total_chunks=1,
+            ),
+            chunks=[chunk],
+        )
+        with patch(
+            "pipeline.chunk_context.call_llm",
+            return_value="Situación sintética.",
+        ):
+            await embed_document(document, "session-context", chunk_tier="slow")
+        sent = mock_inference.feature_extraction.call_args[0][0]
+        stored = get_index().text("session-context", chunk.chunk_id)
+        assert sent[0].startswith("passage: Situación sintética.")
+        assert stored == chunk.text
 
     @pytest.mark.asyncio
     async def test_upsert_is_idempotent(
@@ -242,13 +257,13 @@ class TestEmbedDocument:
     ) -> None:
         # Embedding the same document twice must not create duplicates —
         # upsert deduplicates by chunk_id
-        from pipeline.embedder import embed_document, get_collection
+        from pipeline.embedder import embed_document
+        from pipeline.index_store import get_index
 
         session_id = "session-upsert-idem"
         await embed_document(document, session_id)
         await embed_document(document, session_id)
-        collection = get_collection(session_id)
-        assert collection.count() == len(document.chunks)
+        assert get_index().count(session_id) == len(document.chunks)
 
     @pytest.mark.asyncio
     async def test_empty_document_does_not_raise(
@@ -265,31 +280,32 @@ class TestEmbedDocument:
         self, mock_inference, document: DocumentResult
     ) -> None:
         # Chunks embedded under session A must not appear in session B
-        from pipeline.embedder import embed_document, get_collection
+        from pipeline.embedder import embed_document
+        from pipeline.index_store import get_index
 
         await embed_document(document, "session-a")
-        collection_b = get_collection("session-b")
-        assert collection_b.count() == 0
+        assert get_index().count("session-b") == 0
 
     @pytest.mark.asyncio
     async def test_chunk_text_stored_without_prefix(
         self, mock_inference, document: DocumentResult
     ) -> None:
         # The raw chunk text (without "passage: " prefix) must be stored
-        # in ChromaDB so it can be returned as a citation to the user
-        from pipeline.embedder import embed_document, get_collection
+        # so it can be returned as a citation to the user
+        from pipeline.embedder import embed_document
+        from pipeline.index_store import get_index
 
         session_id = "session-text-check"
         await embed_document(document, session_id)
-        collection = get_collection(session_id)
-        results = collection.get(ids=[document.chunks[0].chunk_id])
-        assert results["documents"][0] == document.chunks[0].text
+        stored = get_index().text(session_id, document.chunks[0].chunk_id)
+        assert stored == document.chunks[0].text
 
     @pytest.mark.asyncio
     async def test_reembed_drops_chunks_from_the_previous_version(
         self, mock_inference, document: DocumentResult
     ) -> None:
-        from pipeline.embedder import embed_document, get_collection
+        from pipeline.embedder import embed_document
+        from pipeline.index_store import get_index
 
         session_id = "session-replace-shorter"
         await embed_document(document, session_id)
@@ -302,7 +318,5 @@ class TestEmbedDocument:
             chunks=[document.chunks[0]],
         )
         await embed_document(shorter, session_id)
-        collection = get_collection(session_id)
-        assert collection.count() == 1
-        stored = collection.get(include=["metadatas"])
-        assert stored["ids"] == [document.chunks[0].chunk_id]
+        assert get_index().count(session_id) == 1
+        assert get_index().ids(session_id) == [document.chunks[0].chunk_id]

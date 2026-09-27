@@ -1,28 +1,26 @@
 """
 vector_store.py
 
-Query interface for the ChromaDB vector store.
+Query interface for the session search index.
 Provides semantic search over embedded document chunks, scoped both
 to a user session and to a specific source document. The embedder
-writes to ChromaDB; this module only reads from it.
+writes the index; this module only reads from it.
 """
 
 import json
 import logging
 
-from pipeline.embedder import embed_query, get_collection
+from config.embeddings import DEFAULT_EMBEDDING_TIER, embedding_method_for
+from pipeline.embedder import embed_query
+from pipeline.index_store import get_index
+from pipeline.lexical import bm25_order, fuse
 
 logger = logging.getLogger(__name__)
 
-# Number of candidate chunks retrieved per query. The agent re-ranks and
-# filters these before passing them to the LLM, so a higher value improves
-# recall at the cost of a slightly larger context window sent to the model.
+# Number of chunks returned to the agent.
 _DEFAULT_N_RESULTS = 5
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+# Dense and word lists fused before a reranker sees them.
+_CANDIDATES = 30
 
 
 def search(
@@ -30,19 +28,20 @@ def search(
     session_id: str,
     source: str,
     n_results: int = _DEFAULT_N_RESULTS,
+    embedding_tier: str = DEFAULT_EMBEDDING_TIER,
 ) -> list[dict]:
     """Search for chunks relevant to a question within a single document.
 
-    Embeds the question and queries ChromaDB with a `where` filter on the
-    source filename so results never mix across PDFs. Returns chunks ordered
-    by descending cosine similarity (ascending distance).
+    Embeds the question and queries the session index, filtered to one PDF.
+    Returns chunks ordered by descending cosine similarity (ascending distance).
 
     Args:
         question: The user question or variable to extract.
-        session_id: Selects the correct ChromaDB collection for this user.
+        session_id: Selects the index rows for this user session.
         source: PDF filename to restrict the search to. Must match the
-            `source` metadata field stored at index time.
+            `source` field stored at index time.
         n_results: Maximum number of chunks to return.
+        embedding_tier: Retrieval setting. Fast is the vector only.
 
     Returns:
         List of result dicts ordered by relevance, each containing:
@@ -62,18 +61,20 @@ def search(
     )
 
     query_vector = embed_query(question)
-    collection = get_collection(session_id)
-
-    raw = collection.query(
-        query_embeddings=[query_vector],
-        n_results=n_results,
-        # Filtering by source before the similarity search is more efficient
-        # than post-filtering and guarantees results stay within one PDF
-        where={"source": source},
-        include=["documents", "metadatas", "distances"],
-    )
-
-    results = _parse_query_results(raw)
+    method = embedding_method_for(embedding_tier)
+    index = get_index()
+    if method == "dense":
+        found = index.search(session_id, source, query_vector, n_results)
+    else:
+        found = _fused(
+            question,
+            session_id,
+            source,
+            query_vector,
+            n_results,
+            rerank=method == "rerank",
+        )
+    results = [{**hit, "headings": _headings(hit.get("headings", []))} for hit in found]
 
     logger.debug(
         "Search returned %d results (top distance=%.4f)",
@@ -96,18 +97,7 @@ def list_sources(session_id: str) -> list[str]:
         Sorted list of unique source filenames. Empty if no documents
         have been indexed yet.
     """
-    collection = get_collection(session_id)
-
-    if collection.count() == 0:
-        logger.debug("Collection empty for session=%s", session_id)
-        return []
-
-    # Fetch only metadata — skipping embeddings and documents keeps this fast
-    items = collection.get(include=["metadatas"])
-    sources = sorted(
-        {meta["source"] for meta in items["metadatas"] if "source" in meta}
-    )
-
+    sources = get_index().list_sources(session_id)
     logger.debug(
         "%d unique source(s) in session=%s: %s",
         len(sources),
@@ -117,14 +107,36 @@ def list_sources(session_id: str) -> list[str]:
     return sources
 
 
-# ---------------------------------------------------------------------------
-# Internal implementation
-# ---------------------------------------------------------------------------
+def _fused(
+    question: str,
+    session_id: str,
+    source: str,
+    query_vector: list[float],
+    n_results: int,
+    rerank: bool,
+) -> list[dict]:
+    """Fuse the vector list with a word list. Slow then reranks that shortlist."""
+    index = get_index()
+    pool = max(n_results, _CANDIDATES)
+    dense = index.search(session_id, source, query_vector, pool)
+    rows = index.source_chunks(session_id, source)
+    lexical_ids = bm25_order(question, rows)
+    limit = pool if rerank else n_results
+    fused = fuse(dense, lexical_ids, rows, limit)
+    if not rerank:
+        return fused
+    from pipeline.rerank import score
+
+    scores = score(question, [str(hit.get("text", "")) for hit in fused])
+    order = sorted(range(len(fused)), key=lambda index: -scores[index])
+    return [fused[index] for index in order[:n_results]]
 
 
-def _headings(raw: str) -> list[str]:
-    """Decode headings stored as a JSON array."""
-    if not raw:
+def _headings(raw: object) -> list[str]:
+    """Decode headings stored as a list or as a JSON array."""
+    if isinstance(raw, list) and all(isinstance(item, str) for item in raw):
+        return list(raw)
+    if not isinstance(raw, str) or not raw:
         return []
     try:
         parsed = json.loads(raw)
@@ -133,35 +145,3 @@ def _headings(raw: str) -> list[str]:
     if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed):
         return parsed
     return []
-
-
-def _parse_query_results(raw: dict) -> list[dict]:
-    """Parse ChromaDB query output into a flat list of result dicts.
-
-    ChromaDB returns parallel lists (documents, metadatas, distances) wrapped
-    in an outer batch dimension. This function flattens that dimension and
-    deserialises the JSON headings array back into a list.
-
-    Args:
-        raw: Raw dict returned by collection.query().
-
-    Returns:
-        Flat list of result dicts ordered by ascending distance.
-    """
-    documents = raw.get("documents", [[]])[0]
-    metadatas = raw.get("metadatas", [[]])[0]
-    distances = raw.get("distances", [[]])[0]
-
-    return [
-        {
-            "text": text,
-            "source": meta.get("source", ""),
-            "page": meta.get("page", 1),
-            # Deserialise headings from the pipe-separated sentinel stored at
-            # index time — empty string means no section headings were detected
-            "headings": _headings(meta.get("headings", "")),
-            "chunk_index": meta.get("chunk_index", 0),
-            "distance": distance,
-        }
-        for text, meta, distance in zip(documents, metadatas, distances, strict=False)
-    ]

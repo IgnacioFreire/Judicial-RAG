@@ -5,9 +5,9 @@ for every user. fast, medium, and slow are the only tiers.
 """
 
 CHUNK_TIERS: dict[str, str] = {
-    "fast": "page",
+    "fast": "window",
     "medium": "hybrid",
-    "slow": "fine",
+    "slow": "context",
 }
 
 DEFAULT_CHUNK_TIER = "medium"
