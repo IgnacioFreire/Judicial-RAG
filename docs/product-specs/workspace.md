@@ -39,12 +39,39 @@ Opening a done document SHALL show that document's answers only. A ready or fail
 Reset SHALL clear the document list, its times, and the session token totals. It SHALL keep the saved schema and the three tiers.
 
 ### Requirement: Profile
-The profile popover SHALL show the Supabase account email this process uses, the provider and model names, whether the active keys are set, and this session's generation token totals. It MUST NOT show key material.
+The profile popover SHALL show the Supabase account email this process uses, the provider and model names, whether the active keys are set, and this session's generation token totals. It MUST NOT show key material. The popover SHALL offer sign out, a keys dialog, theme, and language controls.
 
 #### Scenario: Key is set
-- **WHEN** the active LLM key is present in the server settings
+- **WHEN** the active LLM key is present in the server settings or in this session's key overrides
 - **THEN** the profile says the key is configured
 - **AND** the key value is not in the response
+
+### Requirement: Sign out
+Sign out SHALL end the current browser session: delete its uploads, index rows, UI state, and token totals, then issue a new session cookie. Theme and language choices stored in the browser SHALL remain.
+
+#### Scenario: Sign out while idle
+- **WHEN** the user signs out and no run is in progress
+- **THEN** the next request uses a new session with empty documents and results
+
+#### Scenario: Sign out during a run
+- **WHEN** the user signs out while a run is in progress
+- **THEN** the response is conflict
+
+### Requirement: Session API keys
+The keys dialog SHALL let the user set optional overrides for the active LLM provider key and the Hugging Face embedding key for this session only. Saving SHALL not return key values. Clearing an override SHALL fall back to the server environment keys.
+
+#### Scenario: Override for a run
+- **WHEN** the user saves a session LLM key override and runs the pipeline
+- **THEN** generation calls use the override for that session
+
+### Requirement: Theme
+The UI SHALL support light and dark themes. The choice SHALL persist in the browser and apply to every route.
+
+### Requirement: Locale
+The UI SHALL support English and Spanish. The choice SHALL persist in the browser. Pipeline-facing type names and API enums stay as in the code.
+
+### Requirement: Contextual help
+Pages and major controls SHALL offer a help control that opens a short explanation dialog. Help text SHALL follow the active locale.
 
 ### Requirement: New session
 A new UI session SHALL NOT restore another session's rows, answers, or token totals.
