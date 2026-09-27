@@ -9,7 +9,7 @@ React (Vite) with four routes. FastAPI in `app/` is the only process that calls 
 | `/documents/:name` | One PDF: status, times, answers when the run finished it |
 | `/settings` | Question editor, save schema, three tiers, read-only type list |
 
-`web/src/components/AppShell.tsx` is the sidebar and the profile popover. Pages live in `web/src/pages/`.
+`web/src/components/AppShell.tsx` is the sidebar and header. `ProfileMenu` holds profile, theme, locale, keys, and sign out. `web/src/i18n/` holds English and Spanish copy. Pages live in `web/src/pages/`.
 
 | File | Role |
 |---|---|
@@ -51,6 +51,9 @@ Drafts live only in `QuestionForm` until **Save schema**. They are not written t
 | `GET` | `/api/documents` |
 | `GET` | `/api/documents/{name}` |
 | `GET` | `/api/profile` |
+| `GET` | `/api/profile/keys` |
+| `PUT` | `/api/profile/keys` |
+| `POST` | `/api/sign-out` |
 | `POST` | `/api/run` (SSE: `stage`, `source`, `message`, `current`, `total`) |
 | `POST` | `/api/reset` |
 

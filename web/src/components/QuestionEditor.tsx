@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { darkField, darkTextarea } from "@/lib/styles"
+import { fieldClass, textareaClass } from "@/lib/styles"
 import { TYPE_OPTIONS, type QuestionDraft, type QuestionType } from "@/lib/types"
 
 type Props = {
@@ -19,14 +19,14 @@ export function QuestionEditor({ draft, index, disabled, onChange, onRemove }: P
   return (
     <details
       open={draft.expanded}
-      className="rounded-2xl border border-zinc-800 bg-zinc-950 p-3"
+      className="rounded-2xl border border-border bg-muted/30 p-3"
     >
-      <summary className="cursor-pointer text-sm font-medium text-zinc-100">{title}</summary>
+      <summary className="cursor-pointer text-sm font-medium text-foreground">{title}</summary>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <Label className="text-zinc-400">Label</Label>
+          <Label className="text-muted-foreground">Label</Label>
           <Input
-            className={darkField}
+            className={fieldClass}
             value={draft.label}
             placeholder="e.g. Sentencing date"
             disabled={disabled}
@@ -34,9 +34,9 @@ export function QuestionEditor({ draft, index, disabled, onChange, onRemove }: P
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-zinc-400">Type</Label>
+          <Label className="text-muted-foreground">Type</Label>
           <select
-            className={darkField}
+            className={fieldClass}
             value={draft.question_type}
             disabled={disabled}
             onChange={(event) =>
@@ -54,9 +54,9 @@ export function QuestionEditor({ draft, index, disabled, onChange, onRemove }: P
           </select>
         </div>
         <div className="space-y-1 sm:col-span-2">
-          <Label className="text-zinc-400">Question / extraction rule</Label>
+          <Label className="text-muted-foreground">Question / extraction rule</Label>
           <Textarea
-            className={darkTextarea}
+            className={textareaClass}
             value={draft.question}
             placeholder="e.g. What is the date of the sentence? Format: DD/MM/YYYY"
             disabled={disabled}
@@ -64,9 +64,9 @@ export function QuestionEditor({ draft, index, disabled, onChange, onRemove }: P
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-zinc-400">Expected output format (optional)</Label>
+          <Label className="text-muted-foreground">Expected output format (optional)</Label>
           <Input
-            className={darkField}
+            className={fieldClass}
             value={draft.output_format}
             placeholder="e.g. DD/MM/YYYY, integer"
             disabled={disabled}
@@ -76,9 +76,9 @@ export function QuestionEditor({ draft, index, disabled, onChange, onRemove }: P
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-zinc-400">Additional rules (optional)</Label>
+          <Label className="text-muted-foreground">Additional rules (optional)</Label>
           <Input
-            className={darkField}
+            className={fieldClass}
             value={draft.notes}
             placeholder="e.g. Round to nearest integer"
             disabled={disabled}
@@ -92,7 +92,7 @@ export function QuestionEditor({ draft, index, disabled, onChange, onRemove }: P
           {draft.categories.map((category) => (
             <div key={category.id} className="grid grid-cols-[1fr_3fr_auto] gap-2">
               <Input
-                className={darkField}
+                className={fieldClass}
                 value={category.code}
                 placeholder="1"
                 disabled={disabled}
@@ -108,7 +108,7 @@ export function QuestionEditor({ draft, index, disabled, onChange, onRemove }: P
                 }
               />
               <Input
-                className={darkField}
+                className={fieldClass}
                 value={category.label}
                 placeholder="Conviction"
                 disabled={disabled}

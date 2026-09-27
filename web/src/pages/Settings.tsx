@@ -1,20 +1,19 @@
 import { AdvancedSettings } from "@/components/AdvancedSettings"
+import { PageHeader } from "@/components/PageHeader"
 import { QuestionForm } from "@/components/QuestionForm"
 import { Card } from "@/components/ui/card"
+import { useI18n } from "@/i18n/context"
 import { TYPE_OPTIONS } from "@/lib/types"
 import { useWorkspace } from "@/workspace"
 
 export function SettingsPage() {
+  const { messages } = useI18n()
+  const t = messages.settings
   const { session, setSession } = useWorkspace()
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Questions, save schema, and the three session tiers.
-        </p>
-      </div>
-      <div className="rounded-3xl bg-zinc-950 p-4 text-zinc-100">
+    <div className="space-y-6">
+      <PageHeader title={t.title} description={t.subtitle} helpKey="settings" />
+      <div className="space-y-4 rounded-2xl border border-border bg-muted/40 p-4">
         <QuestionForm
           disabled={session.is_processing}
           onSaved={(count) =>
@@ -25,20 +24,15 @@ export function SettingsPage() {
             )
           }
         />
-        <div className="mt-4">
-          <AdvancedSettings
-            session={session}
-            disabled={session.is_processing}
-            onChange={(next) => setSession(next)}
-          />
-        </div>
+        <AdvancedSettings
+          session={session}
+          disabled={session.is_processing}
+          onChange={(next) => setSession(next)}
+        />
       </div>
       <Card>
-        <h2 className="font-semibold">Question types</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          Each type uses the instruction in pipeline/rag_agent.py. The editable text is
-          the question, the output format, and the notes.
-        </p>
+        <h2 className="font-semibold">{t.typesTitle}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t.typesIntro}</p>
         <ul className="mt-3 space-y-2 text-sm">
           {TYPE_OPTIONS.map((option) => (
             <li key={option.value}>

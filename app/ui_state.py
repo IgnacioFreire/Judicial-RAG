@@ -7,6 +7,7 @@ from config.chunkers import DEFAULT_CHUNK_TIER
 from config.embeddings import DEFAULT_EMBEDDING_TIER
 from config.parsers import DEFAULT_PARSER_TIER
 from models.query import DocumentAnswers, QuestionSchema
+from services.session_secrets import KeyOverrides
 
 _ui: dict[str, "UiState"] = {}
 
@@ -25,6 +26,7 @@ class UiState:
     embedding_tier: str = DEFAULT_EMBEDDING_TIER
     success_message: str | None = None
     documents: dict[str, "DocumentRow"] = field(default_factory=dict)
+    key_overrides: KeyOverrides = field(default_factory=KeyOverrides)
 
 
 @dataclass
@@ -97,6 +99,11 @@ def close_run(state: UiState, done_names: set[str]) -> None:
             row.status = "failed"
             if row.finished_at is None:
                 row.finished_at = now
+
+
+def drop_ui(session_id: str) -> None:
+    """Remove UI state when the browser session ends."""
+    _ui.pop(session_id, None)
 
 
 def get_or_create_ui(session_id: str) -> UiState:

@@ -5,7 +5,7 @@ import { Alert } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { saveUploads } from "@/lib/api"
-import { darkField } from "@/lib/styles"
+import { fieldClass } from "@/lib/styles"
 
 type Props = {
   files: string[]
@@ -36,12 +36,12 @@ export function Uploader({
   }
 
   return (
-    <section className="space-y-3 rounded-2xl bg-zinc-900 p-4">
-      <div className="flex items-center gap-2 text-zinc-100">
-        <FileUp className="size-4 text-zinc-400" />
+    <section className="space-y-3">
+      <div className="flex items-center gap-2 text-foreground">
+        <FileUp className="size-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">Upload documents</h2>
       </div>
-      <Label htmlFor="pdfs" className="text-zinc-400">
+      <Label htmlFor="pdfs" className="text-muted-foreground">
         Upload one or more PDF files
       </Label>
       <Input
@@ -51,12 +51,12 @@ export function Uploader({
         accept=".pdf,application/pdf"
         multiple
         disabled={disabled}
-        className={`${darkField} file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-2 file:py-1 file:text-zinc-100`}
+        className={`${fieldClass} file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-2 file:py-1 file:text-foreground`}
         onChange={handleChange}
       />
-      <p className="text-xs text-zinc-500">Maximum {maxMb} MB per file.</p>
+      <p className="text-xs text-muted-foreground">Maximum {maxMb} MB per file.</p>
       {emptyHint && files.length === 0 ? (
-        <Alert className="border-zinc-800 bg-zinc-950 text-zinc-300">
+        <Alert className="border-border bg-muted text-muted-foreground">
           Upload at least one PDF to get started.
         </Alert>
       ) : null}

@@ -100,7 +100,9 @@ def _call_anthropic(prompt: str) -> str:
     """
     import anthropic
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    from services.session_secrets import anthropic_api_key
+
+    client = anthropic.Anthropic(api_key=anthropic_api_key())
     message = client.messages.create(
         model=settings.llm_model,
         max_tokens=_MAX_TOKENS,
@@ -127,7 +129,9 @@ def _call_openai(prompt: str) -> str:
     """
     import openai
 
-    client = openai.OpenAI(api_key=settings.openai_api_key)
+    from services.session_secrets import openai_api_key
+
+    client = openai.OpenAI(api_key=openai_api_key())
     completion = client.chat.completions.create(
         model=settings.llm_model,
         max_tokens=_MAX_TOKENS,
@@ -198,9 +202,11 @@ def _provider_credentials(provider: str) -> tuple[str, str]:
     Keys are read at call time so importing this module does not require
     settings to be loaded yet.
     """
+    from services.session_secrets import deepseek_api_key, gemini_api_key
+
     credentials = {
-        "deepseek": (_DEEPSEEK_BASE_URL, settings.deepseek_api_key),
-        "gemini": (_GEMINI_BASE_URL, settings.gemini_api_key),
+        "deepseek": (_DEEPSEEK_BASE_URL, deepseek_api_key()),
+        "gemini": (_GEMINI_BASE_URL, gemini_api_key()),
     }
     return credentials[provider]
 
