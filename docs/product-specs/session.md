@@ -29,7 +29,7 @@ The system SHALL drop the in-memory search index when the process exits. It MUST
 - **AND** the user must upload them again to ask questions
 
 ### Requirement: Parser tier
-The parser tier is a preference of the current session. The default is medium. Reset MUST keep the selected tier. Two sessions MAY select different tiers. A stored user profile MUST persist this same field for that user. The mapping from tier to method is not a per-user setting.
+The parser tier and the chunk tier are preferences of the current session. Each default is medium. Reset MUST keep both. Two sessions MAY select different tiers. A stored user profile MUST persist these same fields for that user. The mapping from tier to method is not a per-user setting.
 
 #### Scenario: Reset keeps the tier
 - **WHEN** the user has selected a tier and then resets

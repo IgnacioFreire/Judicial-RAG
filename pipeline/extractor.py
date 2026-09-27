@@ -21,6 +21,7 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
 
+from config.chunkers import DEFAULT_CHUNK_TIER, chunk_method_for
 from config.parsers import DEFAULT_PARSER_TIER, method_for
 from config.settings import settings
 from models.document import Chunk, DocumentMetadata, DocumentResult
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 _executor: ThreadPoolExecutor | None = None
 _tokenizer: HuggingFaceTokenizer | None = None
+_fine_tokenizer_cache: HuggingFaceTokenizer | None = None
 _converter: DocumentConverter | None = None
 
 
@@ -107,6 +109,7 @@ def _get_converter() -> DocumentConverter:
 async def extract(
     pdf_path: Path,
     tier: str = DEFAULT_PARSER_TIER,
+    chunk_tier: str = DEFAULT_CHUNK_TIER,
 ) -> DocumentResult:
     """Extract text and metadata from a PDF with the configured tier.
 
@@ -117,25 +120,36 @@ async def extract(
 
     Args:
         pdf_path: Absolute path to the PDF file.
-        tier: User setting. One of fast, medium, or slow.
+        tier: Parser setting. One of fast, medium, or slow.
+        chunk_tier: Chunk setting. One of fast, medium, or slow.
 
     Returns:
         DocumentResult with all chunks and document metadata.
     """
     method = method_for(tier)
-    logger.info("Queuing extraction: %s (%s)", pdf_path.name, method)
+    chunk_method = chunk_method_for(chunk_tier)
+    logger.info("Queuing extraction: %s (%s, %s)", pdf_path.name, method, chunk_method)
     loop = asyncio.get_event_loop()
     if method == "docling":
-        return await loop.run_in_executor(_pool(), _extract_sync, pdf_path)
+        return await loop.run_in_executor(
+            _pool(),
+            _extract_sync,
+            pdf_path,
+            chunk_tier,
+        )
     if method == "pymupdf4llm":
         from pipeline.pymupdf_parser import extract_pymupdf
 
-        return await loop.run_in_executor(_pool(), extract_pymupdf, pdf_path)
-    if method == "marker":
+        document = await loop.run_in_executor(_pool(), extract_pymupdf, pdf_path)
+    elif method == "marker":
         from pipeline.marker_parser import extract_marker
 
-        return await loop.run_in_executor(_pool(), extract_marker, pdf_path)
-    raise RuntimeError(f"No parser is implemented for method '{method}'")
+        document = await loop.run_in_executor(_pool(), extract_marker, pdf_path)
+    else:
+        raise RuntimeError(f"No parser is implemented for method '{method}'")
+    from pipeline.chunking import retier_page_document
+
+    return retier_page_document(document, chunk_tier)
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +157,9 @@ async def extract(
 # ---------------------------------------------------------------------------
 
 
-def _extract_sync(pdf_path: Path) -> DocumentResult:
+def _extract_sync(
+    pdf_path: Path, chunk_tier: str = DEFAULT_CHUNK_TIER
+) -> DocumentResult:
     """Run Docling extraction and chunking synchronously.
 
     Separated from the async wrapper so it can run in a thread
@@ -181,15 +197,8 @@ def _extract_sync(pdf_path: Path) -> DocumentResult:
         logger.exception("Docling conversion failed for %s", pdf_path.name)
         raise RuntimeError(f"Docling failed to convert {pdf_path.name}: {e}") from e
 
-    chunker = HybridChunker(
-        tokenizer=_chunk_tokenizer(),
-        # Merge consecutive undersized chunks that share the same headings
-        # to avoid fragmenting short paragraphs across chunk boundaries
-        merge_peers=True,
-    )
-
     t_chunk = time.perf_counter()
-    chunks = _build_chunks(chunker, result.document, pdf_path.name)
+    chunks = _chunks_for_tier(result.document, pdf_path.name, chunk_tier)
     logger.debug(
         "Chunking complete: %s — %d chunks in %.2fs",
         pdf_path.name,
@@ -212,6 +221,57 @@ def _extract_sync(pdf_path: Path) -> DocumentResult:
     )
 
     return DocumentResult(metadata=metadata, chunks=chunks)
+
+
+def _chunks_for_tier(doc: object, filename: str, chunk_tier: str) -> list[Chunk]:
+    """Chunk a Docling document with the configured tier."""
+    method = chunk_method_for(chunk_tier)
+    if method == "page":
+        return _page_chunks(doc, filename)
+    if method == "fine":
+        chunker = HybridChunker(tokenizer=_fine_tokenizer(), merge_peers=True)
+        return _build_chunks(chunker, doc, filename)
+    if method == "hybrid":
+        chunker = HybridChunker(
+            tokenizer=_chunk_tokenizer(),
+            # Merge consecutive undersized chunks that share the same headings
+            # to avoid fragmenting short paragraphs across chunk boundaries
+            merge_peers=True,
+        )
+        return _build_chunks(chunker, doc, filename)
+    raise RuntimeError(f"No chunker is implemented for method '{method}'")
+
+
+def _fine_tokenizer() -> HuggingFaceTokenizer:
+    """Load the embedding tokenizer. 256 tokens is the slow, finer cut."""
+    global _fine_tokenizer_cache
+    if _fine_tokenizer_cache is None:
+        _fine_tokenizer_cache = HuggingFaceTokenizer(
+            tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-large"),
+            max_tokens=256,
+        )
+        logger.debug("Fine chunking tokenizer loaded: multilingual-e5-large (256)")
+    return _fine_tokenizer_cache
+
+
+def _page_chunks(doc: object, filename: str) -> list[Chunk]:
+    """One chunk per page from Docling's element tree."""
+    from docling.chunking import HierarchicalChunker
+
+    from pipeline.chunking import merge_page_rows
+    from pipeline.parsed_pages import document_from_pages
+
+    chunker = HierarchicalChunker()
+    rows: list[tuple[int, str, list[str]]] = []
+    for item in chunker.chunk(dl_doc=doc):
+        text = getattr(item, "text", "") or ""
+        headings = list(item.meta.headings or [])
+        rows.append((_get_page(item), text, headings))
+    return document_from_pages(
+        filename,
+        merge_page_rows(rows),
+        prepend_headings=True,
+    ).chunks
 
 
 def _build_chunks(

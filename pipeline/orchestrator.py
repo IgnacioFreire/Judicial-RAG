@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from config.chunkers import DEFAULT_CHUNK_TIER
 from config.parsers import DEFAULT_PARSER_TIER
 from models.query import AgentAnswer, AnswerConfidence, DocumentAnswers, QuestionSchema
 from pipeline.embedder import delete_source, embed_document
@@ -79,6 +80,7 @@ async def run(
     session_id: str,
     on_progress: OnProgress | None = None,
     parser_tier: str = DEFAULT_PARSER_TIER,
+    chunk_tier: str = DEFAULT_CHUNK_TIER,
 ) -> list[DocumentAnswers]:
     """Run the full pipeline for a list of PDFs and a question schema.
 
@@ -125,7 +127,13 @@ async def run(
     )
 
     _drop_stale_sources(session_id, pdf_paths)
-    indexed = await _index_all(pdf_paths, session_id, on_progress, parser_tier)
+    indexed = await _index_all(
+        pdf_paths,
+        session_id,
+        on_progress,
+        parser_tier,
+        chunk_tier,
+    )
     results = _answer_all(sorted(set(indexed)), schema, session_id, on_progress)
 
     logger.info(
@@ -167,6 +175,7 @@ async def _index_all(
     session_id: str,
     on_progress: OnProgress | None,
     parser_tier: str,
+    chunk_tier: str,
 ) -> list[str]:
     """Extract and embed all PDFs concurrently via asyncio.gather.
 
@@ -185,7 +194,15 @@ async def _index_all(
     """
     total = len(pdf_paths)
     tasks = [
-        _index_one(path, session_id, on_progress, idx, total, parser_tier)
+        _index_one(
+            path,
+            session_id,
+            on_progress,
+            idx,
+            total,
+            parser_tier,
+            chunk_tier,
+        )
         for idx, path in enumerate(pdf_paths, start=1)
     ]
     outcomes = await asyncio.gather(*tasks, return_exceptions=True)
@@ -205,6 +222,7 @@ async def _index_one(
     current: int,
     total: int,
     parser_tier: str,
+    chunk_tier: str,
 ) -> str | None:
     """Extract and embed a single PDF, emitting progress at each stage.
 
@@ -238,7 +256,7 @@ async def _index_one(
             ),
         )
 
-        document = await extract(pdf_path, tier=parser_tier)
+        document = await extract(pdf_path, tier=parser_tier, chunk_tier=chunk_tier)
         logger.debug("Extracted %s: %d chunks", source, document.metadata.total_chunks)
         if document.metadata.total_chunks == 0:
             raise RuntimeError("produced no text")

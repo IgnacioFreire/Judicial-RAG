@@ -3,6 +3,7 @@
 import streamlit as st
 
 from app import session_state as state
+from config.chunkers import CHUNK_TIERS
 from config.parsers import PARSER_TIERS
 
 _LABELS = {
@@ -29,3 +30,22 @@ def render() -> None:
             ),
         )
         state.set_parser_tier(choice)
+
+        current_chunk = state.chunk_tier()
+        chunk_options = list(CHUNK_TIERS)
+        chunk_choice = st.selectbox(
+            "Chunking",
+            options=chunk_options,
+            index=(
+                chunk_options.index(current_chunk)
+                if current_chunk in chunk_options
+                else 1
+            ),
+            format_func=lambda tier: f"{_LABELS[tier]} — {CHUNK_TIERS[tier]}",
+            disabled=state.is_processing(),
+            help=(
+                "Fast keeps one chunk per page. Medium splits sections at 512 tokens. "
+                "Slow uses the embedding tokenizer and 256 tokens."
+            ),
+        )
+        state.set_chunk_tier(chunk_choice)

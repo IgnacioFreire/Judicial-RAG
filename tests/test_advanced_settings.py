@@ -13,3 +13,10 @@ def test_parser_defaults_to_medium() -> None:
     assert "pymupdf4llm" in shown[0]
     assert "docling" in shown[1]
     assert "marker" in shown[2]
+    chunking = [box for box in app.selectbox if box.label == "Chunking"]
+    assert len(chunking) == 1
+    assert chunking[0].value == "medium"
+    chunk_shown = chunking[0].options
+    assert "page" in chunk_shown[0]
+    assert "hybrid" in chunk_shown[1]
+    assert "fine" in chunk_shown[2]

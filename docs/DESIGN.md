@@ -14,6 +14,7 @@ One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify var
 │ Save schema            │                                 │
 │ Advanced settings      │                                 │
 │ Parser                 │                                 │
+│ Chunking               │                                 │
 └────────────────────────┴─────────────────────────────────┘
 ```
 
@@ -30,6 +31,10 @@ One wide screen. Title `⚖️ Judicial RAG`. Caption: "Extract and classify var
 | Fast option | `Fast — pymupdf4llm` |
 | Medium option | `Medium — docling` |
 | Slow option | `Slow — marker` |
+| Chunking tier | `Chunking` |
+| Fast chunk option | `Fast — page` |
+| Medium chunk option | `Medium — hybrid` |
+| Slow chunk option | `Slow — fine` |
 | Missing answer | `No answer found.` |
 | Direct provenance | `Extracted directly` |
 | Inferred provenance | `Inferred through reasoning` |

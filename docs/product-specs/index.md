@@ -4,7 +4,7 @@ Behavior a person can rely on. A change to it is a plan in [`../plans/`](../plan
 
 | Spec | What it covers |
 |---|---|
-| [`document-upload.md`](document-upload.md) | PDF upload, the 20 MB limit, and the parser tier |
+| [`document-upload.md`](document-upload.md) | PDF upload, the 20 MB limit, and the parser and chunk tiers |
 | [`question-schema.md`](question-schema.md) | Save rules, the four question types, schema lifetime |
 | [`variable-extraction.md`](variable-extraction.md) | One row per question, citations, batch failures |
 | [`session.md`](session.md) | Isolation and session lifetime |
